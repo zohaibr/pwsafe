@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, test, build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Fetch pypwsafe fixtures (pinned commit, checksummed)
+        run: npm run fixtures:pypwsafe
+      - run: npm test
+      - run: npm run build
+      - name: Launch smoke test (Linux, virtual display)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npx playwright test
+      - name: Launch smoke test
+        if: runner.os != 'Linux'
+        run: npx playwright test
+
+  oracle:
+    name: Compatibility oracle (pwsafe-cli 1.25.0)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Restore oracle build
+        id: oracle-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .oracle/pwsafe-cli
+            .oracle/xml
+          key: pwsafe-cli-da4460325ac41ccd798a52d9b250ef4d5c768abc-${{ runner.os }}-${{ hashFiles('scripts/oracle/*') }}
+      - name: Install oracle runtime and build dependencies
+        run: sudo apt-get update -q && sudo apt-get install -qy $(cat scripts/oracle/apt-deps.txt)
+      - name: Build pwsafe-cli
+        if: steps.oracle-cache.outputs.cache-hit != 'true'
+        run: scripts/oracle/build-pwsafe-cli.sh
+      - run: npm ci
+      - name: Fetch pypwsafe fixtures (pinned commit, checksummed)
+        run: npm run fixtures:pypwsafe
+      - name: Oracle tests
+        # Passphrases go to the CLI on stdin; no shell tracing, and exported XML stays in temp dirs.
+        env:
+          PWSAFE_CLI: .oracle/pwsafe-cli
+          PWS_XMLDIR: ${{ github.workspace }}/.oracle/xml/
+        run: npx vitest run test/oracle

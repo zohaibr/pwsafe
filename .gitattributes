@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.psafe3 binary
+*.png binary
+*.icns binary
+*.ico binary
