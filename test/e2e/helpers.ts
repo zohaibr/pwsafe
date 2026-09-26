@@ -6,11 +6,13 @@
 // only name titles, counts and error codes.
 import {
   copyFileSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
   statSync,
+  writeFileSync,
   type Stats,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -18,6 +20,7 @@ import { join, resolve } from 'node:path'
 import {
   _electron as electron,
   expect,
+  test,
   type ElectronApplication,
   type Page,
 } from '@playwright/test'
@@ -75,6 +78,7 @@ export function makeSetup(name: FixtureName = 'cli-add'): Setup {
 
 export function removeSetup(s: Setup | undefined): void {
   killLaunched()
+  releaseClipboard()
   if (s) rmSync(s.dir, { recursive: true, force: true })
 }
 
@@ -226,4 +230,62 @@ export function clipboardHolds(app: ElectronApplication, expected: string): Prom
     async ({ clipboard }, value) => (await clipboard.readText()) === value,
     expected,
   )
+}
+
+// ── System clipboard mutex ────────────────────────────────────────────────
+// Every app instance shares the one system clipboard, and Playwright runs spec files in parallel
+// workers (separate processes). A test that copies, clears or reads the clipboard takes this
+// cross-process lock for its whole run, so no two such tests ever overlap. The lock is a
+// directory (mkdir is atomic) holding the owner's pid; a lock whose owner died is taken over.
+
+const CLIPBOARD_LOCK = join(tmpdir(), 'psafe3-opener-e2e-clipboard.lock')
+const STALE_WITHOUT_PID_MS = 60_000
+let holdingClipboard = false
+
+function lockIsStale(): boolean {
+  try {
+    const pid = Number(readFileSync(join(CLIPBOARD_LOCK, 'pid'), 'utf8'))
+    try {
+      process.kill(pid, 0)
+      return false
+    } catch (e) {
+      return (e as NodeJS.ErrnoException).code === 'ESRCH'
+    }
+  } catch {
+    // No pid yet: the owner is between mkdir and write, unless it died there long ago.
+    try {
+      return Date.now() - statSync(CLIPBOARD_LOCK).mtimeMs > STALE_WITHOUT_PID_MS
+    } catch {
+      return false
+    }
+  }
+}
+
+/**
+ * Waits for exclusive use of the system clipboard (call first thing in a test or beforeAll).
+ * The time spent waiting is added to the test's timeout. Released by removeSetup().
+ */
+export async function acquireClipboard(): Promise<void> {
+  if (holdingClipboard) return
+  const started = Date.now()
+  for (;;) {
+    try {
+      mkdirSync(CLIPBOARD_LOCK)
+      writeFileSync(join(CLIPBOARD_LOCK, 'pid'), String(process.pid))
+      break
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e
+      if (lockIsStale()) rmSync(CLIPBOARD_LOCK, { recursive: true, force: true })
+      else await new Promise((r) => setTimeout(r, 100))
+    }
+  }
+  holdingClipboard = true
+  const info = test.info()
+  info.setTimeout(info.timeout + (Date.now() - started))
+}
+
+export function releaseClipboard(): void {
+  if (!holdingClipboard) return
+  holdingClipboard = false
+  rmSync(CLIPBOARD_LOCK, { recursive: true, force: true })
 }

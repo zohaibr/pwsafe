@@ -9,6 +9,7 @@ import { expect, test, type ElectronApplication, type Page } from '@playwright/t
 import { detailValue } from './flow'
 import {
   WINDOWS_READ_ONLY,
+  acquireClipboard,
   clipboardHolds,
   editField,
   isWindows,
@@ -29,14 +30,14 @@ import {
 
 const EXPECTED = loadExpected('cli-add')
 const MASTER = EXPECTED.password
-// An entry no other e2e test copies, since parallel tests share the system clipboard.
 const TARGET = EXPECTED.entries.find((e) => e.title === 'Times')!
 const EDITED_USERNAME = 'wp9-autolock-user'
 const FOREIGN_CLIPBOARD = 'copied-by-another-app'
 
 let setup: Setup | undefined
-test.beforeEach(() => {
+test.beforeEach(async () => {
   test.skip(isWindows, WINDOWS_READ_ONLY)
+  await acquireClipboard()
   setup = makeSetup('cli-add')
 })
 test.afterEach(() => {
@@ -46,8 +47,7 @@ test.afterEach(() => {
 
 /**
  * Records, in main, each clipboard write the app makes from now on ('' for a clear, 'value'
- * otherwise; the value itself is never kept). Parallel tests share the system clipboard, so
- * "left alone" is checked on what the app did, not only on what the clipboard holds afterwards.
+ * otherwise; the value itself is never kept), so "left alone" is checked on what the app did.
  */
 async function spyOnClipboardWrites(app: ElectronApplication): Promise<void> {
   await app.evaluate(({ clipboard }) => {

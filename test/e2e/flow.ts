@@ -207,6 +207,10 @@ export async function runFullFlow(app: ElectronApplication, s: Setup): Promise<v
   await expect(restore.getByRole('cell', { name: EDITED.username })).toBeVisible()
   await restore.getByRole('button', { name: 'Restore this version' }).click()
   await expect(page.getByText('Restored the backup.')).toBeVisible({ timeout: 30_000 })
+  // Restore clears the selection. Clicking an entry in a scrolled list right now hits a known app
+  // bug (app-bugs.spec.ts: the list selects and scrolls to its first entry on mouse-down, so the
+  // click lands elsewhere), so narrow the list with search first; the bug has its own test.
+  await page.getByLabel('Search entries').fill(EDITED.title)
   await selectEntry(page, EDITED.title)
   expect(await detailValue(page, 'Username')).toBe(EDITED.username)
   // On disk: the file is the restored version; what it replaced is now the newest backup.

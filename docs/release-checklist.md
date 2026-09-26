@@ -219,7 +219,15 @@ Release commit: `__________` · CI run: `__________` · Date: `__________`
     recovery
   - `test/integration/vault-recovery.test.ts`: "§A5 crash recovery on a real disk"
 
-## 14. Accessibility (§B7)
+## 14. Known app bugs shown by e2e tests (must be fixed before v1.0)
+
+- [ ] `test/e2e/app-bugs.spec.ts`: "clicking an entry in a scrolled list selects that entry" is
+      marked `test.fail`. When nothing visible is selected (after Restore, or when search hides the
+      selected entry), clicking an entry in a scrolled list selects the first entry instead. Tick
+      this once the fix is in `src/renderer` and the `test.fail` line is removed.
+- [ ] The spellchecker download in item 9.
+
+## 15. Accessibility (§B7)
 
 - [ ] **Manual: VoiceOver pass on macOS.** Turn VoiceOver on with **⌘F5**. Using only the keyboard,
       with a copy of `cli-add.psafe3`:

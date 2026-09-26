@@ -7,6 +7,7 @@ import { copyFileSync, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import {
+  acquireClipboard,
   clipboardHolds,
   entryList,
   expectUnchanged,
@@ -47,6 +48,7 @@ interface Api {
 
 test('Windows opens the vault read-only and refuses every write path', async () => {
   test.skip(!isWindows, 'Windows only (§A6: v1 is read-only on Windows)')
+  await acquireClipboard()
   const s = setup!
   const backup = `${s.db}.bak`
   copyFileSync(s.db, backup)

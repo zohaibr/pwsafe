@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test'
 import { FLOW_FILES, runFullFlow } from './flow'
 import {
   WINDOWS_READ_ONLY,
+  acquireClipboard,
   isWindows,
   launch,
   makeSetup,
@@ -24,6 +25,7 @@ test.afterEach(() => {
 test('unlock → search → copy → add → edit → delete → save → reopen → export → Save As → restore', async () => {
   test.skip(isWindows, WINDOWS_READ_ONLY)
   test.setTimeout(120_000)
+  await acquireClipboard()
   const s = setup!
   const app = await launch(s)
   await runFullFlow(app, s)

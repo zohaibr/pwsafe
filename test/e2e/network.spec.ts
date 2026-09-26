@@ -14,7 +14,14 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test, type ElectronApplication } from '@playwright/test'
 import { runFullFlow } from './flow'
-import { WINDOWS_READ_ONLY, isWindows, launch, makeSetup, removeSetup } from './helpers'
+import {
+  WINDOWS_READ_ONLY,
+  acquireClipboard,
+  isWindows,
+  launch,
+  makeSetup,
+  removeSetup,
+} from './helpers'
 
 /** Made on purpose at the end; the reserved `.invalid` TLD never resolves. */
 const CONTROL_URL = 'https://control.wp9.invalid/'
@@ -80,6 +87,7 @@ test.describe.configure({ mode: 'serial', timeout: 120_000 })
 
 test.beforeAll(async () => {
   if (isWindows) return
+  await acquireClipboard() // the journey copies a password
   const s = makeSetup('cli-add')
   const netLog = join(s.dir, 'net-log.json')
   const app = await launch(s, {}, [`--log-net-log=${netLog}`])
