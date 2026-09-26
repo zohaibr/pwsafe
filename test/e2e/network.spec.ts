@@ -23,8 +23,12 @@ import {
   removeSetup,
 } from './helpers'
 
-/** Made on purpose at the end; the reserved `.invalid` TLD never resolves. */
-const CONTROL_URL = 'https://control.wp9.invalid/'
+/**
+ * Made on purpose at the end. The session recorder records every URL that isn't a local scheme,
+ * loopback included, so a loopback control proves it is live without any chance of leaving the
+ * machine. (A `.invalid` host was not seen by webRequest on the macOS runner.)
+ */
+const CONTROL_URL = 'http://127.0.0.1:9/wp9-session-control'
 /** Local only: nothing listens on the discard port, so this never leaves the machine. */
 const LOCAL_CONTROL_URL = 'http://127.0.0.1:9/wp9-control'
 
@@ -121,7 +125,7 @@ test.beforeAll(async () => {
       during,
       netLog: logged.filter((u) => !LOOPBACK.test(u)),
       controls: {
-        session: after.session.includes(CONTROL_URL),
+        session: after.session.some((u) => u.startsWith(CONTROL_URL)),
         node: after.node.length > during.node.length,
         netLog: logged.some((u) => u.startsWith(LOCAL_CONTROL_URL)),
       },
