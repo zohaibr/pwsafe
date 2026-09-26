@@ -3,7 +3,7 @@
 // file system with the fast key-stretch stand-in.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ErrorCode, type Result } from '../../shared/errors'
 import { IpcChannel } from '../../shared/ipc'
@@ -400,15 +400,17 @@ describe('export (§A7)', () => {
 
   it('writes the XML to the picked path and reports counts; reveal only for that path', async () => {
     await unlocked()
-    env.dialogs.export = '/out/db-export.xml'
+    // The controller resolves picked paths, which adds a drive letter on Windows.
+    const out = resolve('/out/db-export.xml')
+    env.dialogs.export = out
     const r = await env.call(IpcChannel.exportXml, { scope: { kind: 'all' } })
     expect(r).toEqual({
       ok: true,
-      value: { filePath: '/out/db-export.xml', entryCount: 5, entriesWithOmittedFields: 2 },
+      value: { filePath: out, entryCount: 5, entriesWithOmittedFields: 2 },
     })
-    expect(env.exports.get('/out/db-export.xml')).toContain('<passwordsafe')
-    expect(code(await env.call(IpcChannel.revealInFolder, '/out/db-export.xml'))).toBe('ok')
-    expect(env.revealed).toEqual(['/out/db-export.xml'])
+    expect(env.exports.get(out)).toContain('<passwordsafe')
+    expect(code(await env.call(IpcChannel.revealInFolder, out))).toBe('ok')
+    expect(env.revealed).toEqual([out])
     expect(code(await env.call(IpcChannel.revealInFolder, '/etc/hosts'))).toBe(
       ErrorCode.INVALID_ARGUMENT,
     )
