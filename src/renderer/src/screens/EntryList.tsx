@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, type KeyboardEvent } from 'react'
+import { forwardRef, useEffect, useRef, type KeyboardEvent } from 'react'
 import type { Entry } from '@shared/types'
 import { Icon } from '../components/Icons'
 import { displayGroup } from '../hooks'
@@ -21,6 +21,9 @@ export const EntryList = forwardRef<
 >(function EntryList(props, ref) {
   const { entries, selected } = props
   const index = entries.findIndex((e) => e.uuid === selected)
+  // Set on pointer-down so the focus it causes doesn't auto-select (and scroll to) the first
+  // entry: that would move the list under the pointer and swallow the click.
+  const pointerDown = useRef(false)
 
   useEffect(() => {
     if (!selected) return
@@ -63,8 +66,16 @@ export const EntryList = forwardRef<
       tabIndex={0}
       aria-activedescendant={index >= 0 && selected ? optionId(selected) : undefined}
       onKeyDown={onKeyDown}
+      onPointerDown={() => {
+        pointerDown.current = true
+      }}
       onFocus={() => {
-        if (index < 0 && entries[0]) props.onSelect(entries[0].uuid)
+        const byPointer = pointerDown.current
+        pointerDown.current = false
+        if (!byPointer && index < 0 && entries[0]) props.onSelect(entries[0].uuid)
+      }}
+      onPointerUp={() => {
+        pointerDown.current = false
       }}
     >
       {entries.map((e) => (

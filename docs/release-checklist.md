@@ -221,10 +221,10 @@ Release commit: `__________` · CI run: `__________` · Date: `__________`
 
 ## 14. Known app bugs shown by e2e tests (must be fixed before v1.0)
 
-- [ ] `test/e2e/app-bugs.spec.ts`: "clicking an entry in a scrolled list selects that entry" is
-      marked `test.fail`. When nothing visible is selected (after Restore, or when search hides the
-      selected entry), clicking an entry in a scrolled list selects the first entry instead. Tick
-      this once the fix is in `src/renderer` and the `test.fail` line is removed.
+- [x] `test/e2e/app-bugs.spec.ts`: "clicking an entry in a scrolled list selects that entry".
+      When nothing visible was selected (after Restore, or when search hid the selected entry),
+      clicking an entry in a scrolled list selected the first entry instead. Fixed in
+      `src/renderer/src/screens/EntryList.tsx` (focus from a pointer no longer auto-selects).
 - [ ] The spellchecker download in item 9.
 
 ## 15. Accessibility (§B7)

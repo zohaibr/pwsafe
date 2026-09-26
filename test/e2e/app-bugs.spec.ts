@@ -30,7 +30,6 @@ test.afterEach(() => {
 // under the pointer before mouse-up and the click never reaches the option that was pressed.
 // Seen on the macOS CI runner in the full flow (smaller window, so the 13-entry list scrolls).
 test('clicking an entry in a scrolled list selects that entry', async () => {
-  test.fail(true, 'EntryList onFocus selects and scrolls to the first entry (see WP9 PR)')
   const app = await launch(setup!)
   const page = await openAndUnlock(app, MASTER)
   await expect(page.locator('#detail-title')).toHaveText('Entry 000') // selected on open
