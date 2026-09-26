@@ -2,3 +2,9 @@
 export * from './types'
 export { createNodeFileSystem, type NodeFileSystemOptions } from './nodeFs'
 export { isNetworkFs, mountTypeFor, LINUX_NETWORK_MAGICS, MAC_NETWORK_TYPES } from './fsType'
+export {
+  readRegularFile,
+  MAX_BACKUP_BYTES,
+  MAX_JOURNAL_BYTES,
+  MAX_LOCK_FILE_BYTES,
+} from './bounded'

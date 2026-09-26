@@ -6,7 +6,7 @@ import { randomBytes as nodeRandomBytes } from 'node:crypto'
 import { basename, dirname, join, resolve } from 'node:path'
 import { DEFAULT_MESSAGES, ErrorCode, fail, ok, type Result } from '../../shared/errors'
 import type { LockChoice, UnlockOptions, LockOptions } from '../../shared/ipc'
-import { SLOW_UNLOCK_THRESHOLD } from '../../shared/limits'
+import { MAX_FILE_BYTES, SLOW_UNLOCK_THRESHOLD } from '../../shared/limits'
 import {
   type Banner,
   type BackupInfo,
@@ -22,6 +22,7 @@ import {
   type VaultStatus,
 } from '../../shared/types'
 import type { FileSystem } from '../fs/types'
+import { readRegularFile } from '../fs/bounded'
 import { errnoOf, isNotFound } from '../fs/types'
 import { isNetworkFs } from '../fs/fsType'
 import type { LockHolder, LockPlatform } from '../lockfile/encoding'
@@ -193,6 +194,13 @@ function memoStretch(base: StretchFn): { fn: StretchFn; wipe: () => void } {
     return p
   }
   return { fn, wipe: () => cache.forEach((v) => v.fill(0)) }
+}
+
+/** Swaps in the stamped header and zeroes the save-metadata buffers it replaced (§A4.8). */
+function replaceHeader(m: OpenModel, stamped: RawField[]): void {
+  const kept = new Set(stamped.map((f) => f.data))
+  for (const f of m.header) if (!kept.has(f.data)) f.data.fill(0)
+  m.header = stamped
 }
 
 function copyModel(m: VaultModel): VaultModel {
@@ -428,6 +436,7 @@ export class Vault {
     let disk: DiskState | undefined
     if (s.blob) bytes = s.blob
     else {
+      if (await this.oversize(s.dbPath)) return err(ErrorCode.TOO_LARGE)
       try {
         const r = await readDiskState(fs, s.dbPath)
         bytes = r.bytes
@@ -508,6 +517,19 @@ export class Vault {
     s.unlockProgress = undefined
     this.emit()
     return ok(this.getState())
+  }
+
+  /**
+   * §A4 step 1 before reading: a file over the size cap is refused without loading it into
+   * memory (decode checks the size again on the bytes it gets). Unknown size: false, and the
+   * read that follows reports the error.
+   */
+  private async oversize(path: string): Promise<boolean> {
+    try {
+      return (await this.deps.fs.lstat(path)).size > MAX_FILE_BYTES
+    } catch {
+      return false
+    }
   }
 
   private readOnly(reason: ReadOnlyReason): { reason: ReadOnlyReason; text: string } {
@@ -711,6 +733,7 @@ export class Vault {
       const m = this.openModel()
       if (!m.ok) return m
       const s = this.session!
+      if (await this.oversize(s.dbPath)) return err(ErrorCode.TOO_LARGE)
       let r
       try {
         r = await readDiskState(this.deps.fs, s.dbPath)
@@ -813,7 +836,7 @@ export class Vault {
       )
       const result = this.finishSave(s, outcome, (disk) => {
         s.disk = disk
-        m.header = plan.stamped
+        replaceHeader(m, plan.stamped)
       })
       await this.unknownBannerIfNeeded(s, outcome)
       return result
@@ -916,7 +939,7 @@ export class Vault {
         s.lock = destLock
         s.network = network
         s.banners = network ? [{ ...NETWORK_BANNER }] : []
-        m.header = plan.stamped
+        replaceHeader(m, plan.stamped)
         this.dropPreview(s)
       })
       if (oldLock) await releaseLock(fs, oldLock)
@@ -968,9 +991,10 @@ export class Vault {
       const s = this.session!
       const b = (await this.backups(s)).find((x) => x.id === id)
       if (!b) return err(ErrorCode.IO_ERROR, 'That backup is gone.')
+      if (b.sizeBytes > MAX_FILE_BYTES) return err(ErrorCode.TOO_LARGE)
       let bytes: Uint8Array
       try {
-        bytes = await this.deps.fs.readFile(b.path)
+        bytes = await readRegularFile(this.deps.fs, b.path, MAX_FILE_BYTES)
       } catch {
         return err(ErrorCode.IO_ERROR, 'That backup could not be read.')
       }
@@ -1014,7 +1038,7 @@ export class Vault {
         return fail(ErrorCode.READ_ONLY, DEFAULT_MESSAGES.READ_ONLY, READ_ONLY_TEXT['newer-format'])
       }
       try {
-        if (sha256Hex(await this.deps.fs.readFile(p.path)) !== p.sha256) {
+        if (sha256Hex(await readRegularFile(this.deps.fs, p.path, MAX_FILE_BYTES)) !== p.sha256) {
           return err(ErrorCode.IO_ERROR, 'That backup changed. Preview it again.')
         }
       } catch {

@@ -11,6 +11,7 @@
 // silently, except on a network volume, where nothing is ever removed automatically.
 import type { FileSystem } from '../fs/types'
 import { errnoOf, isNotFound } from '../fs/types'
+import { MAX_LOCK_FILE_BYTES, readRegularFile } from '../fs/bounded'
 import {
   decodeLocker,
   encodeLocker,
@@ -91,7 +92,8 @@ export function classifyHolder(
 
 async function readHolder(fs: FileSystem, path: string): Promise<LockHolder | undefined | null> {
   try {
-    const text = decodeLocker(await fs.readFile(path))
+    // A FIFO, device, symlink or oversized file under the lock name reads as "held, unknown".
+    const text = decodeLocker(await readRegularFile(fs, path, MAX_LOCK_FILE_BYTES))
     return text === undefined ? undefined : parseLocker(text)
   } catch (e) {
     if (isNotFound(e)) return null
@@ -190,7 +192,7 @@ export async function acquireLock(
  */
 export async function releaseLock(fs: FileSystem, lock: HeldLock): Promise<boolean> {
   try {
-    const now = await fs.readFile(lock.path)
+    const now = await readRegularFile(fs, lock.path, MAX_LOCK_FILE_BYTES)
     if (now.length !== lock.content.length || !now.every((b, i) => b === lock.content[i])) {
       return false
     }

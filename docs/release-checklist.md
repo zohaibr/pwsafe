@@ -156,16 +156,15 @@ Release commit: `__________` · CI run: `__________` · Date: `__________`
 - [ ] **Automated.** The renderer has no Node, no remote navigation and no new windows.
   - `test/e2e/wiring.spec.ts`: "renderer has no Node, no remote navigation, no new windows, no
     network"
-- [ ] **Automated. Not passing yet.** No network requests during a full end-to-end run.
+- [x] **Automated.** No network requests during a full end-to-end run.
   - `test/e2e/network.spec.ts`: "the full journey makes no network requests". It records with
     Chromium's net log from process start, a session `webRequest` recorder and Node's
     diagnostics channels. "all three network recorders are live during the full journey" proves
     each recorder catches a deliberate request.
-  - **Known blocker:** on Linux, Chromium's spellchecker downloads
-    `https://redirector.gvt1.com/edgedl/chrome/dict/en-us-10-1.bdic` once a text field is edited.
-    The app's session filter never sees this request. The test is marked `test.fail` on Linux
-    until main turns the spellchecker, or its dictionary download, off. Tick this item only after
-    that fix, with the `test.fail` line removed and the test green on all three OSes.
+  - **Was blocked** on Linux by Chromium's spellchecker downloading
+    `https://redirector.gvt1.com/edgedl/chrome/dict/en-us-10-1.bdic` once a text field was edited,
+    outside the app's session filter. Fixed in PR #14 (`src/main/session.ts`, security review F12);
+    the `test.fail` line is removed.
 - [ ] **Manual (or from the security review PR).** The Electronegativity scan shows no high or
       medium findings. Run it in a scratch clone, not as a project dependency:
       `npx @doyensec/electronegativity -i . -o /tmp/electronegativity.csv`
@@ -225,7 +224,7 @@ Release commit: `__________` · CI run: `__________` · Date: `__________`
       When nothing visible was selected (after Restore, or when search hid the selected entry),
       clicking an entry in a scrolled list selected the first entry instead. Fixed in
       `src/renderer/src/screens/EntryList.tsx` (focus from a pointer no longer auto-selects).
-- [ ] The spellchecker download in item 9.
+- [x] The spellchecker download in item 9 (fixed in PR #14).
 
 ## 15. Accessibility (§B7)
 

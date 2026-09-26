@@ -15,6 +15,17 @@ files:
   # so production node_modules would be dead weight. Drop this line if main ever needs one.
   - '!node_modules/**'
 asar: true
+# Electron fuses (docs/security-review.md F1), flipped in the binary before signing. An installed
+# app ignores ELECTRON_RUN_AS_NODE, NODE_OPTIONS and --inspect, and only loads its own checked
+# app.asar. grantFileProtocolExtraPrivileges stays at Electron's default because the page is
+# loaded from file://. build/smoke-packaged.mjs checks the first three on every packaged build.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  enableCookieEncryption: true
 # package.json has no homepage/author; deb metadata needs them.
 extraMetadata:
   homepage: https://github.com/zohaibr/pwsafe

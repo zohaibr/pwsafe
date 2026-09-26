@@ -32,8 +32,23 @@ PWSAFE_CLI=.oracle/pwsafe-cli PWS_XMLDIR=$PWD/.oracle/xml/ npx vitest run test/o
 
 ## Security notes
 
-- The file, the master password and all keys stay in the main process. The renderer is sandboxed
-  and only receives a password when you explicitly reveal it.
-- Clearing secrets from memory is best effort. JavaScript strings (for example a revealed password
-  or text typed into a field) can't be reliably erased and may stay in memory until overwritten.
-- The `.plk` lock file only stops apps that honour it, such as Password Safe itself.
+- **No network.** The app makes no network requests and has no telemetry or update checks; any
+  request from the window is blocked.
+- **Where secrets live.** The file, the master password and all keys stay in the main process. The
+  window is sandboxed and isolated (no Node, no navigation, no new windows, strict Content Security
+  Policy, all permission requests denied, DevTools off in installed builds) and talks to the main
+  process through a small fixed set of calls that are checked on arrival. It only receives a
+  password when you click Show; copying happens in the main process, and the clipboard is cleared
+  after 30 seconds, on lock and on quit if it still holds what we copied.
+- **What we clear, and what we can't promise.** On lock and close we overwrite the master
+  password, the keys and the decrypted data we hold in buffers. JavaScript strings can't be
+  erased, so a password you revealed, text you typed into a field, and values passed between the
+  window and the main process may stay in memory until overwritten. Clearing memory is best
+  effort, not a guarantee.
+- **Exports are not encrypted.** XML exports are written readable only by you (`0600`); delete them
+  when done.
+- **Lock files are cooperative.** The `.plk` lock only stops apps that honour it, such as Password
+  Safe itself. A save checks that the file hasn't changed just before replacing it; a very short
+  gap remains after that check, and the replace never follows a symlink put in the file's place.
+
+See `docs/security-review.md` for the full review and dependency audit.

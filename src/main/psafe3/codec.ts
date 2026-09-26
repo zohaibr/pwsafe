@@ -290,10 +290,20 @@ export async function assemble(
   }
 }
 
+/** crypto.randomBytes as a Uint8Array view, so no extra copy of K or L is left behind. */
+function defaultRandom(n: number): Uint8Array {
+  const b = randomBytes(n)
+  return new Uint8Array(b.buffer, b.byteOffset, b.byteLength)
+}
+
 function takeRandom(random: (n: number) => Uint8Array, n: number): Uint8Array {
   const b = random(n)
   if (b.length < n) throw new RangeError('random source returned too few bytes')
-  return b.slice(0, n)
+  const out = b.slice(0, n)
+  // Our own source's buffer would otherwise keep a copy of K and L until garbage collection.
+  // An injected source (tests) keeps its bytes.
+  if (random === defaultRandom) b.fill(0)
+  return out
 }
 
 /**
@@ -321,7 +331,7 @@ export async function encode(
   const iterations = Math.max(requested, MIN_ITERATIONS_WRITE)
   if (options.signal?.aborted) return err(ErrorCode.CANCELLED)
 
-  const random = deps.randomBytes ?? ((n: number) => new Uint8Array(randomBytes(n)))
+  const random = deps.randomBytes ?? defaultRandom
   const salt = takeRandom(random, 32)
   const k = takeRandom(random, 32)
   const l = takeRandom(random, 32)

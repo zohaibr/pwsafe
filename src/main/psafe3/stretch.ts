@@ -70,16 +70,24 @@ export const stretchKeyInWorker: StretchFn = (password, salt, iterations, option
       reject(new StretchCancelledError('cancelled'))
       return
     }
-    // workerData is structured-cloned; the worker zeroes its copy of the password after use.
-    const worker = new Worker(WORKER_SOURCE, {
-      eval: true,
-      workerData: {
-        password: new Uint8Array(password),
-        salt: new Uint8Array(salt),
-        iterations,
-        every: PROGRESS_EVERY,
-      },
-    })
+    // workerData is structured-cloned when the Worker is constructed; the worker zeroes its copy
+    // of the password after use and we zero ours right away. (The copy keeps a pooled Buffer's
+    // neighbouring bytes out of the clone.)
+    const passwordCopy = new Uint8Array(password)
+    let worker: Worker
+    try {
+      worker = new Worker(WORKER_SOURCE, {
+        eval: true,
+        workerData: {
+          password: passwordCopy,
+          salt: new Uint8Array(salt),
+          iterations,
+          every: PROGRESS_EVERY,
+        },
+      })
+    } finally {
+      passwordCopy.fill(0)
+    }
     let settled = false
     const finish = (fn: () => void) => {
       if (settled) return
