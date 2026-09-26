@@ -37,16 +37,16 @@ responsive; progress is reported every 16,384 rounds and Cancel terminates the w
 
 ### macOS Apple Silicon CI runner (release gate)
 
-**Pending.** To be filled from a run of the command above on the `macos-latest` (Apple Silicon)
-runner. It needs a workflow step (`.github/workflows/ci.yml` is lead-owned), for example:
+Measured on 2026-09-26 by the `Key-stretching benchmark` step of the `Lint, test, build
+(macos-latest)` CI job (PR #5): darwin arm64, 3 × Apple M1 (Virtual), Node 22.23.2.
 
-```yaml
-- name: Key-stretching benchmark
-  if: runner.os == 'macOS'
-  env:
-    PSAFE3_BENCH: '1'
-  run: npx vitest run src/main/psafe3/stretch.bench.test.ts --silent=false
-```
+| Rounds | Worker (shipped) | crypto.hash loop, main thread | createHash loop, main thread |
+| ---: | ---: | ---: | ---: |
+| 262,144 | 0.25 s | 0.30 s | 0.35 s |
+| 1,048,576 | 0.70 s | 0.95 s | 1.23 s |
+| 16,777,216 | 12.32 s | 13.16 s | 15.09 s |
+
+The CI step re-runs this on every macOS build, so later numbers are in the job log.
 
 The Electron main process runs its own bundled Node version, so a final check inside the packaged
 app is worth doing once WP6 wires unlock end to end.
