@@ -1,0 +1,67 @@
+{
+  "file": "cli-links.psafe3",
+  "madeWith": "pwsafe-cli, Password Safe 1.25.0 (da4460325ac41ccd798a52d9b250ef4d5c768abc)",
+  "password": "wp8-fixture-links",
+  "formatVersion": "0x0311",
+  "iterations": 327680,
+  "entryCount": 5,
+  "entries": [
+    {
+      "uuid": "d040c2a0aff64e5e8f14e8affbbf8d6d",
+      "group": "Links",
+      "title": "Alias base",
+      "username": "ab",
+      "password": "alias-base-pw",
+      "url": "",
+      "email": "",
+      "notes": "",
+      "kind": "aliasBase"
+    },
+    {
+      "uuid": "325a5c4afae8428084813293b3efe77f",
+      "group": "Links",
+      "title": "Shortcut base",
+      "username": "sb",
+      "password": "shortcut-base-pw",
+      "url": "",
+      "email": "",
+      "notes": "",
+      "kind": "shortcutBase"
+    },
+    {
+      "uuid": "ddbc88bbefc84edfb3ba31a8f7c7d4a9",
+      "group": "Links",
+      "title": "Plain",
+      "username": "",
+      "password": "plain-pw",
+      "url": "",
+      "email": "",
+      "notes": "",
+      "kind": "normal"
+    },
+    {
+      "uuid": null,
+      "group": "Links",
+      "title": "The alias",
+      "username": "",
+      "password": "[[d040c2a0aff64e5e8f14e8affbbf8d6d]]",
+      "url": "",
+      "email": "",
+      "notes": "",
+      "kind": "alias",
+      "baseUuid": "d040c2a0aff64e5e8f14e8affbbf8d6d"
+    },
+    {
+      "uuid": null,
+      "group": "Links",
+      "title": "The shortcut",
+      "username": "",
+      "password": "[~325a5c4afae8428084813293b3efe77f~]",
+      "url": "",
+      "email": "",
+      "notes": "",
+      "kind": "shortcut",
+      "baseUuid": "325a5c4afae8428084813293b3efe77f"
+    }
+  ]
+}
