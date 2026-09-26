@@ -154,11 +154,6 @@ test('the full journey makes no network requests apart from the known spellcheck
 
 test('the full journey makes no network requests', () => {
   test.skip(isWindows, WINDOWS_READ_ONLY)
-  // Known app bug (see the PR): on Linux, Chromium's Hunspell spellchecker downloads its en-US
-  // dictionary from redirector.gvt1.com once a text field is edited, and the app's session filter
-  // never sees that request. macOS uses the system spellchecker and downloads nothing. Remove
-  // this line once main turns the spellchecker (or its dictionary download) off.
-  test.fail(process.platform === 'linux', 'spellchecker dictionary download (see WP9 PR)')
   const r = results!
   expect(r.during).toEqual({ session: [], node: [] })
   expect(r.netLog).toEqual([])
