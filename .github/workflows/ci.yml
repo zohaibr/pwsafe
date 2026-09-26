@@ -32,6 +32,11 @@ jobs:
       - name: Fetch pypwsafe fixtures (pinned commit, checksummed)
         run: npm run fixtures:pypwsafe
       - run: npm test
+      - name: Key-stretching benchmark (docs/benchmarks.md)
+        if: runner.os == 'macOS'
+        env:
+          PSAFE3_BENCH: '1'
+        run: npx vitest run src/main/psafe3/stretch.bench.test.ts --silent=false
       - run: npm run build
       - name: Launch smoke test (Linux, virtual display)
         if: runner.os == 'Linux'
@@ -70,4 +75,4 @@ jobs:
         env:
           PWSAFE_CLI: .oracle/pwsafe-cli
           PWS_XMLDIR: ${{ github.workspace }}/.oracle/xml/
-        run: npx vitest run test/oracle src/main/export
+        run: npx vitest run test/oracle src/main/export src/main/psafe3/a3-cli.test.ts
