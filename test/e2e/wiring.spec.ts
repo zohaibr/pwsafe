@@ -17,6 +17,7 @@ import { createTwofish } from '../../src/main/crypto/twofish/twofish'
 import { decode } from '../../src/main/psafe3/codec'
 import { stretchKeySync } from '../../src/main/psafe3/stretch'
 import { buildEntries } from '../../src/main/psafe3/views'
+import { acquireClipboard, releaseClipboard } from './helpers'
 
 const FIXTURE = resolve('test/fixtures/generated/cli-add.psafe3')
 const EXPECTED = JSON.parse(
@@ -47,6 +48,7 @@ test.beforeEach(() => {
 })
 
 test.afterEach(() => {
+  releaseClipboard()
   if (setup) rmSync(setup.dir, { recursive: true, force: true })
   setup = undefined
 })
@@ -203,6 +205,7 @@ test('renderer has no Node, no remote navigation, no new windows, no network', a
 
 test('opens, edits, saves and exports a copy of a fixture; no password crosses IPC except reveal', async () => {
   test.skip(windows, 'v1 opens every vault read-only on Windows (§A6)')
+  await acquireClipboard() // copies, then checks the clear on lock
   const s = setup!
   const exportPath = join(s.dir, 'export.xml')
   const app = await launch(s, { PSAFE_E2E_EXPORT: exportPath })
