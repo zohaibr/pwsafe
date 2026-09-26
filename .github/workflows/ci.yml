@@ -70,4 +70,4 @@ jobs:
         env:
           PWSAFE_CLI: .oracle/pwsafe-cli
           PWS_XMLDIR: ${{ github.workspace }}/.oracle/xml/
-        run: npx vitest run test/oracle
+        run: npx vitest run test/oracle src/main/export
