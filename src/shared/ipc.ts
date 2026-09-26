@@ -22,6 +22,22 @@ export interface RecentFile {
   folder: string
 }
 
+/** What to do when another app holds the file's `.plk` lock (§A6). */
+export type LockChoice = 'read-only' | 'remove-lock'
+
+export interface UnlockOptions {
+  /**
+   * Only after unlock failed with LOCKED_BY_OTHER and the user chose in the lock dialog.
+   * 'remove-lock' is sent only after the §A6 second confirmation.
+   */
+  lockChoice?: LockChoice
+}
+
+export interface LockOptions {
+  /** Drop unsaved changes before locking (the "Don't save" answer in §B3). */
+  discardChanges?: boolean
+}
+
 export interface CopyResult {
   /** Epoch ms when the clipboard will be cleared (if it still holds this value). */
   clearsAt: number
@@ -29,7 +45,10 @@ export interface CopyResult {
 
 export interface PsafeApi {
   // ── Files ────────────────────────────────────────────────────────────────
-  /** Shows the native open dialog. `null` value = user cancelled. */
+  /**
+   * Shows the native open dialog. `null` value = user cancelled, and any open vault (with its
+   * unsaved changes) stays as it was. The open vault is closed only once a new file is picked.
+   */
   chooseFile(): Promise<Result<{ fileName: string } | null>>
   listRecentFiles(): Promise<Result<RecentFile[]>>
   chooseRecentFile(id: string): Promise<Result<{ fileName: string }>>
@@ -39,10 +58,13 @@ export interface PsafeApi {
    * Unlocks the chosen file. The password string is unavoidable here (it comes from an
    * <input>); main copies it into a Buffer and drops the string reference at once.
    */
-  unlock(password: string): Promise<Result<VaultState>>
+  unlock(password: string, options?: UnlockOptions): Promise<Result<VaultState>>
   cancelUnlock(): Promise<Result<void>>
-  /** Manual lock. With unsaved changes the renderer must ask first (§B3). */
-  lock(): Promise<Result<VaultState>>
+  /**
+   * Manual lock. With unsaved changes the renderer must ask first (§B3); without
+   * `discardChanges` the changes are kept for after the next unlock.
+   */
+  lock(options?: LockOptions): Promise<Result<VaultState>>
   getState(): Promise<Result<VaultState>>
   /** Closes the file (releases its .plk). With unsaved changes the renderer must ask first. */
   closeFile(): Promise<Result<VaultState>>
@@ -87,7 +109,10 @@ export interface PsafeApi {
   onStateChanged(listener: (state: VaultState) => void): () => void
   /** Fires when the user tries to quit or close with unsaved changes (§B3). */
   onCloseRequested(listener: (reason: 'quit' | 'close-window') => void): () => void
-  /** Renderer's answer to onCloseRequested. */
+  /**
+   * Renderer's answer to onCloseRequested. 'save' means the renderer has already saved
+   * successfully, so main may go ahead; if the save failed the renderer answers 'cancel'.
+   */
   respondToClose(choice: 'save' | 'discard' | 'cancel'): Promise<Result<void>>
   /** Renderer reports user activity for the idle timer. Throttled by the caller. */
   reportActivity(): void
