@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { AppError, Result } from '@shared/errors'
 import type { VaultState } from '@shared/types'
-import { useApi, type LockChoice } from '../api'
+import type { LockChoice } from '@shared/ipc'
+import { useApi } from '../api'
 import { ErrorAlert } from '../components/Feedback'
 import { Icon } from '../components/Icons'
 import { LockedByOtherDialog } from '../dialogs/LockedByOtherDialog'
@@ -64,9 +65,8 @@ export function UnlockScreen(props: {
 
   const choose = async (choice: LockChoice) => {
     setLockedBy(null)
-    if (!api.unlockWithLockChoice) return
     setPending(true)
-    finish(await api.unlockWithLockChoice(password, choice))
+    finish(await api.unlock(password, { lockChoice: choice }))
   }
 
   const chooseAnother = async () => {
@@ -159,7 +159,6 @@ export function UnlockScreen(props: {
         <LockedByOtherDialog
           fileName={state.fileName ?? 'This file'}
           detail={lockedBy.detail}
-          canChoose={api.unlockWithLockChoice !== undefined}
           onChoose={(c) => void choose(c)}
           onCancel={() => setLockedBy(null)}
         />

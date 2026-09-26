@@ -2,7 +2,7 @@
 // §A4/§A5/§A6 error code and outcome row: pick a recent file whose scenario you want, or set the
 // `next*` controls before a save, Save As, reload or export. WP7 replaces it with the real bridge.
 import { DEFAULT_MESSAGES, fail, ok, type ErrorCode, type Result } from '@shared/errors'
-import type { CopyResult, RecentFile } from '@shared/ipc'
+import type { CopyResult, LockChoice, LockOptions, RecentFile } from '@shared/ipc'
 import {
   BACKUP_GENERATIONS,
   CLIPBOARD_CLEAR_MS,
@@ -19,7 +19,7 @@ import type {
   Settings,
   VaultState,
 } from '@shared/types'
-import type { LockChoice, RendererApi } from '../src/api'
+import type { RendererApi } from '../src/api'
 import { DEFAULT_GENERATOR } from '../src/defaults'
 import { MOCK_MASTER_PASSWORD, sampleBackups, sampleEntries } from './sampleData'
 
@@ -66,6 +66,10 @@ export interface MockControls {
   slowUnlockTickMs: number
   /** Method names called, in order. Arguments are never recorded (they may be secrets). */
   calls: string[]
+  /** Options of the last lock() call (never secret). */
+  lastLockOptions: LockOptions | undefined
+  /** Lock choice of the last unlock() call, if any. */
+  lastLockChoice: LockChoice | undefined
   /** Answers the renderer gave to close requests. */
   closeResponses: Array<'save' | 'discard' | 'cancel'>
   /** Simulated clipboard: which entry field was copied last (never the value). */
@@ -207,6 +211,8 @@ export function createMockApi(init: Partial<MockControls> = {}): {
     latencyMs: 0,
     slowUnlockTickMs: 150,
     calls: [],
+    lastLockOptions: undefined,
+    lastLockChoice: undefined,
     closeResponses: [],
     clipboard: null,
     autoLock() {
@@ -416,15 +422,21 @@ export function createMockApi(init: Partial<MockControls> = {}): {
         ),
       ),
     chooseRecentFile: (id) => call('chooseRecentFile', () => selectFile(id)),
-    unlock: (password) => call('unlock', () => doUnlock(password)),
-    unlockWithLockChoice: (password, choice) =>
-      call('unlockWithLockChoice', () => doUnlock(password, choice)),
+    unlock: (password, options) =>
+      call('unlock', () => {
+        controls.lastLockChoice = options?.lockChoice
+        return doUnlock(password, options?.lockChoice)
+      }),
     cancelUnlock: () =>
       call('cancelUnlock', () => {
         cancelPendingUnlock?.()
         return ok(undefined)
       }),
-    lock: () => call('lock', () => (state.status === 'no-file' ? err('IO_ERROR') : ok(lockNow()))),
+    lock: (options) =>
+      call('lock', () => {
+        controls.lastLockOptions = options
+        return state.status === 'no-file' ? err('IO_ERROR') : ok(lockNow())
+      }),
     getState: () => call('getState', () => ok(structuredClone(state))),
     closeFile: () =>
       call('closeFile', () => {

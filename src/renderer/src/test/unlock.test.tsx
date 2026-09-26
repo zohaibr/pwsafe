@@ -9,7 +9,6 @@ import {
   field,
   flush,
   openFile,
-  queryButton,
   queryDialog,
   renderApp,
   text,
@@ -140,9 +139,10 @@ describe('§A6 file open in another app', () => {
     expect(document.activeElement?.textContent).toBe('Cancel')
     await click(button('Cancel'))
     expect(queryDialog('Remove the lock?')).toBeNull()
-    expect(h.controls.calls).not.toContain('unlockWithLockChoice')
+    expect(h.controls.lastLockChoice).toBeUndefined()
 
     await click(button('Open read-only'))
+    expect(h.controls.lastLockChoice).toBe('read-only')
     expect(h.controls.state().readOnly?.reason).toBe('locked-by-other')
     expect(document.querySelector('[data-testid="readonly-banner"]')).not.toBeNull()
   })
@@ -152,17 +152,8 @@ describe('§A6 file open in another app', () => {
     await openFile('Team-shared.psafe3')
     await click(button('Remove lock and open…'))
     await click(button('Remove lock and open'))
+    expect(h.controls.lastLockChoice).toBe('remove-lock')
     expect(h.controls.state().status).toBe('open')
     expect(h.controls.state().readOnly).toBeUndefined()
-  })
-
-  it('without the pending API call only Cancel is offered', async () => {
-    await renderApp({}, (api) => ({ ...api, unlockWithLockChoice: undefined }))
-    await openFile('Team-shared.psafe3')
-    expect(queryButton('Open read-only')).toBeNull()
-    expect(queryButton('Remove lock and open…')).toBeNull()
-    expect(dialog().textContent).toContain('Close the file in the other app')
-    await click(button('Cancel'))
-    expect(queryDialog()).toBeNull()
   })
 })
