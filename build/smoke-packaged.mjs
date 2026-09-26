@@ -11,14 +11,17 @@ if (!executablePath || !existsSync(executablePath)) {
   process.exit(2)
 }
 
-const app = await electron.launch({ executablePath, args, timeout: 60_000 })
+// Rosetta translates an x64 build on its first launch, which can take minutes on an arm64 runner,
+// so the workflow raises this for that case.
+const timeout = Number(process.env['SMOKE_TIMEOUT_MS'] ?? 60_000)
+const app = await electron.launch({ executablePath, args, timeout })
 const proc = app.process()
 const exited = new Promise((resolve) =>
   proc.once('exit', (code, signal) => resolve({ code, signal })),
 )
 try {
-  const page = await app.firstWindow({ timeout: 60_000 })
-  await page.getByRole('heading', { name: 'psafe3 Opener' }).waitFor({ timeout: 30_000 })
+  const page = await app.firstWindow({ timeout })
+  await page.getByRole('heading', { name: 'psafe3 Opener' }).waitFor({ timeout })
   const title = await page.title()
   console.error(`smoke: window up (title "${title}"), closing`)
 } catch (err) {

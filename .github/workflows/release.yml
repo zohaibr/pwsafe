@@ -128,8 +128,11 @@ jobs:
             exe="$app/Contents/MacOS/psafe3 Opener"
             archs="$(lipo -archs "$exe")"
             host="$(uname -m)"
-            if [ "$archs" = "$host" ] || { [ "$archs" = "x86_64" ] && arch -x86_64 /usr/bin/true 2>/dev/null; }; then
+            if [ "$archs" = "$host" ]; then
               node build/smoke-packaged.mjs "$exe"
+            elif [ "$archs" = "x86_64" ] && arch -x86_64 /usr/bin/true 2>/dev/null; then
+              # First launch under Rosetta includes translating the whole app; allow for that.
+              SMOKE_TIMEOUT_MS=300000 node build/smoke-packaged.mjs "$exe"
             else
               echo "::notice::Skipping launch of $archs build on a $host runner without Rosetta"
             fi
