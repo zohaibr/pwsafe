@@ -1,0 +1,76 @@
+# Packaging config (docs/execution-plan.md WP5). Run with `npm run dist`.
+appId: io.github.zohaibr.psafe3opener
+productName: psafe3 Opener
+copyright: Copyright © 2026 psafe3 Opener contributors
+
+directories:
+  buildResources: build
+  output: release
+
+# Only the compiled app goes into the package: no sources, tests, fixtures or build scripts.
+files:
+  - out/**
+  - package.json
+  # Vite bundles React into the renderer and main imports only electron and node built-ins,
+  # so production node_modules would be dead weight. Drop this line if main ever needs one.
+  - '!node_modules/**'
+asar: true
+# package.json has no homepage/author; deb metadata needs them.
+extraMetadata:
+  homepage: https://github.com/zohaibr/pwsafe
+  author:
+    name: psafe3 Opener contributors
+    email: noreply@github.com
+artifactName: ${name}-${version}-${os}-${arch}.${ext}
+
+# The workflow uploads installers to the GitHub release itself; nothing auto-publishes.
+publish: null
+
+fileAssociations:
+  - ext: psafe3
+    name: Password Safe V3 Database
+    description: Password Safe V3 database
+    mimeType: application/x-psafe3
+    role: Editor
+    rank: Alternate
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  # Ad-hoc signature by default, so the app runs on Apple Silicon without a certificate.
+  # With signing secrets the release workflow overrides this with the Developer ID identity
+  # (-c.mac.identity=<team id>) and the signed entitlements below.
+  identity: '-'
+  hardenedRuntime: true
+  # allow-jit (V8) plus disable-library-validation, which an ad-hoc signature needs under the
+  # hardened runtime. The signed build uses entitlements.mac.signed.plist (allow-jit only).
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  gatekeeperAssess: false
+  # Notarization runs automatically only when APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and
+  # APPLE_TEAM_ID are in the environment, which the release workflow sets for signed builds only.
+
+dmg:
+  sign: false
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  # Per-user install, never asks for administrator rights.
+  oneClick: true
+  perMachine: false
+  allowElevation: false
+  deleteAppDataOnUninstall: false
+
+linux:
+  category: Utility
+  synopsis: Open and edit Password Safe V3 files, offline
+  target:
+    - AppImage
+    - deb
+  maintainer: psafe3 Opener contributors <noreply@github.com>
