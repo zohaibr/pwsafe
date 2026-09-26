@@ -1,0 +1,17 @@
+node_modules/
+out/
+dist/
+release/
+coverage/
+test-results/
+playwright-report/
+.vite/
+*.log
+.DS_Store
+# Test safes are never committed except generated fixtures under test/fixtures/generated
+*.psafe3
+*.plk
+*.ibak
+!test/fixtures/generated/*.psafe3
+test/fixtures/pypwsafe/
+.oracle/

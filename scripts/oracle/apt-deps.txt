@@ -1,0 +1,15 @@
+cmake
+g++
+gettext
+libcurl4-openssl-dev
+libmagic-dev
+libqrencode-dev
+libssl-dev
+libwxgtk3.2-dev
+libxerces-c-dev
+libxt-dev
+libxtst-dev
+libxml2-utils
+ninja-build
+pkg-config
+uuid-dev
