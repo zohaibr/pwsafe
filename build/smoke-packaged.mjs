@@ -75,17 +75,24 @@ async function ready(app) {
   }
 }
 
-/** Asks the app to quit through the DevTools protocol and waits for the process to end. */
+/**
+ * Quits the app and waits for the process to end. Browser.close (DevTools protocol) closes the
+ * window, which quits the app on Windows and Linux; on macOS the app stays running with no window
+ * (normal for a Mac app), so there it then gets SIGTERM, which Electron handles as a normal quit.
+ */
 async function quit(browser, app) {
+  const within = (ms) =>
+    Promise.race([app.exited, new Promise((resolve) => setTimeout(() => resolve(undefined), ms))])
   const session = await browser.newBrowserCDPSession()
-  // The connection drops as the app quits, so this call never answers.
+  // The connection drops as the app quits, so this call may never answer.
   void session.send('Browser.close').catch(() => {})
-  const outcome = await Promise.race([
-    app.exited,
-    new Promise((resolve) => setTimeout(() => resolve(undefined), timeout)),
-  ])
+  let outcome = await within(process.platform === 'darwin' ? 5_000 : timeout)
+  if (!outcome && process.platform !== 'win32') {
+    app.proc.kill('SIGTERM')
+    outcome = await within(timeout)
+  }
   if (!outcome) {
-    app.proc.kill()
+    app.proc.kill('SIGKILL')
     fail('app did not quit')
   }
   return outcome

@@ -183,7 +183,8 @@ check covers the same Linux build), (b) starts the app with `ELECTRON_RUN_AS_NOD
 and requires the app window instead of the script's output, and (c) starts it with `--inspect=0`
 and requires no "Debugger listening". Because Playwright's Electron launcher itself needs
 `--inspect`, the smoke test now reaches the window through Chromium's DevTools protocol
-(`--remote-debugging-port=0`, see F13) and quits with `Browser.close`. `NODE_OPTIONS` is checked
+(`--remote-debugging-port=0`, see F13) and quits with `Browser.close` (plus SIGTERM on macOS, where closing the last window does not
+quit the app). `NODE_OPTIONS` is checked
 through the fuse wire only: Electron already ignores almost all `NODE_OPTIONS` (including
 `--require`) in a packaged app, so a behavioural test would pass either way. Each check was seen to
 fail on a local Linux build with the matching fuse flipped back.
