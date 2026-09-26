@@ -189,21 +189,27 @@ describe('network volume detection', () => {
     expect(mountTypeFor('', '/x')).toBeUndefined()
   })
 
-  it('the macOS implementation reads the mount table', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'wp6-mt-'))
-    try {
-      // The mount table lists real paths (e.g. /private/var rather than /var on macOS).
-      const real = realpathSync(dir)
-      const fs = createNodeFileSystem({
-        platform: 'darwin',
-        readMountTable: async () => `//u@h/s on ${real} (smbfs, nodev)\n/dev/x on / (apfs, local)`,
-      })
-      expect(await fs.fsType(dir)).toEqual({ name: 'smbfs' })
-      expect(await fs.fsType(tmpdir())).toEqual({ name: 'apfs' })
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
-    }
-  })
+  // Uses the host's real paths as mount points, which only have macOS-style '/' paths on POSIX
+  // hosts. The Windows build never takes this code path (fsType is darwin/linux only).
+  it.runIf(process.platform !== 'win32')(
+    'the macOS implementation reads the mount table',
+    async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'wp6-mt-'))
+      try {
+        // The mount table lists real paths (e.g. /private/var rather than /var on macOS).
+        const real = realpathSync(dir)
+        const fs = createNodeFileSystem({
+          platform: 'darwin',
+          readMountTable: async () =>
+            `//u@h/s on ${real} (smbfs, nodev)\n/dev/x on / (apfs, local)`,
+        })
+        expect(await fs.fsType(dir)).toEqual({ name: 'smbfs' })
+        expect(await fs.fsType(tmpdir())).toEqual({ name: 'apfs' })
+      } finally {
+        rmSync(dir, { recursive: true, force: true })
+      }
+    },
+  )
 
   it.runIf(process.platform === 'linux')('Linux statfs reports a magic number', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'wp6-sf-'))
