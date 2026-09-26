@@ -1,6 +1,7 @@
 # Builds the installers (docs/execution-plan.md WP5 and "What you get at the end").
 # - Tag push v*: build, smoke-test and attach every installer to a GitHub release.
-# - workflow_dispatch: build and smoke-test; a release is made only when run on a v* tag.
+# - workflow_dispatch: build and smoke-test. A release is made when run on a v* tag, or when
+#   `release_tag` is given: the release job then creates that tag on the dispatched commit.
 # - Pull requests touching packaging: build and smoke-test only, never signs or releases.
 # macOS signing + notarization turn on when all five secrets exist:
 #   CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID.
@@ -11,6 +12,11 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Create this tag (e.g. v0.0.1-test) on the dispatched commit and release it'
+        required: false
+        default: ''
   pull_request:
     paths:
       - electron-builder.yml
@@ -184,7 +190,9 @@ jobs:
   release:
     name: Create GitHub release
     needs: package
-    if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      github.event_name != 'pull_request' &&
+      (startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != '')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -203,7 +211,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           set -euo pipefail
           cd dist-release
@@ -244,10 +252,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "::error::Bad tag $TAG"; exit 1; }
           prerelease=()
           case "$TAG" in *-*) prerelease=(--prerelease) ;; esac
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            tag_args=(--verify-tag)
+          else
+            # Dispatched with release_tag: create the tag on the commit that was built.
+            tag_args=(--target "$GITHUB_SHA")
+          fi
           gh release create "$TAG" dist-release/* \
-            --verify-tag --title "psafe3 Opener $TAG" --notes-file release-notes.md "${prerelease[@]}"
+            "${tag_args[@]}" --title "psafe3 Opener $TAG" --notes-file release-notes.md "${prerelease[@]}"
