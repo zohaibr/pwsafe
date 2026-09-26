@@ -52,3 +52,7 @@ PWSAFE_CLI=.oracle/pwsafe-cli PWS_XMLDIR=$PWD/.oracle/xml/ npx vitest run test/o
   gap remains after that check, and the replace never follows a symlink put in the file's place.
 
 See `docs/security-review.md` for the full review and dependency audit.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
