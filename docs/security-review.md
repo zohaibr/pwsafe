@@ -15,19 +15,21 @@ folder beyond not losing data (the `.plk` is cooperative, §A5 step 6).
 
 | # | Area | Finding | Severity | Status |
 |---|---|---|---|---|
-| F1 | Packaging | Electron fuses are not set: a packaged build honours `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` and `--inspect`, and loads app code without ASAR integrity checks | Medium | **Open**: needs `electron-builder.yml` (WP5/lead), see below |
+| F1 | Packaging | Electron fuses were not set: a packaged build honoured `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` and `--inspect`, and loaded app code without ASAR integrity checks | Medium | **Fixed** (`electron-builder.yml` `electronFuses`), checked by `build/smoke-packaged.mjs` on every packaged build |
 | F2 | Codec | With the default random source, the `crypto.randomBytes` buffers behind the salt, K, L and IV were copied and the originals left for the GC (one extra plaintext copy of K and L per encode) | Low | **Fixed** (`codec.ts`), test |
 | F3 | Codec | The key-stretch worker was given a main-thread copy of the master password that was never zeroed | Low | **Fixed** (`stretch.ts`), test |
 | F4 | Vault | Header save-metadata buffers replaced by a save (last saved by user/host/app/time) were dropped without being zeroed | Low (not secret, but breaks the §A4.8 "owned buffers zeroed" rule) | **Fixed** (`vault.ts`), test |
 | F5 | Vault | A file over the 128 MB cap was read fully into memory before `decode` refused it (TOO_LARGE); a multi-GB file could exhaust memory or fail as IO_ERROR | Low | **Fixed** (`vault.ts`): size checked with `lstat` before unlock, reload and backup preview read; tests |
-| F6 | Vault / lock file | Sidecar reads (`.plk`, rotation journal, backup hashes) do not check the file type or size; a FIFO or huge file planted next to the vault can hang or stall unlock/save | Low (needs write access to the vault's folder; denial of service only) | Open, written up below |
+| F6 | Vault / lock file | Sidecar reads (`.plk`, rotation journal, backup hashes, backup preview/restore) did not check the file type or size; a FIFO or huge file planted next to the vault could hang or stall unlock/save | Low (needs write access to the vault's folder; denial of service only) | **Fixed** (`src/main/fs/bounded.ts`), tests |
 | F7 | Renderer CSP | `img-src` allowed `data:` although nothing uses it | Info | **Fixed** (`src/renderer/index.html`): `img-src 'self'` |
 | F8 | Renderer CSP | Electronegativity CSP_GLOBAL_CHECK (LOW): `script-src 'self'` | Low | Accepted, rationale below |
 | F9 | Window | The page is served from `file://`, so `'self'` covers every local file URL (Electron security checklist item 18 prefers a custom protocol) | Low | Accepted for v1, v1.1 candidate |
 | F10 | Clipboard | Copied values are not marked concealed/transient, so clipboard managers, macOS Universal Clipboard and Windows clipboard history may keep them; a crash before the 30 s timer leaves the value on the clipboard | Low | Open (v1.1 candidate), written up below |
 | F11 | CI | GitHub Actions are pinned by major tag (`@v4`, `@v5`), not by commit SHA | Info | Open; all are first-party `actions/*` |
+| F12 | Session | On Linux and Windows the default session downloaded a hunspell dictionary from `redirector.gvt1.com` at startup and when typing, although `webPreferences.spellcheck` is off; the download is made by the browser process and does not pass our `webRequest` filter (found by the WP9 E2E worker) | Medium (breaks "no network requests") | **Fixed** (`src/main/session.ts`), unit test; net-log check below |
+| F13 | Packaging | Chromium's `--remote-debugging-port` switch still works in an installed app (no fuse covers it); a process that can launch the app as the user could drive the page and call its API after the user unlocks | Low (same-user attacker, outside the threat model) | Open, written up below |
 
-No High findings. The two Medium Electronegativity results are explained under Electronegativity.
+No High findings. The Medium findings (F1, F12) are fixed; the Medium Electronegativity result is explained under Electronegativity.
 
 ## Tested boundaries added (§A4.8)
 
@@ -42,6 +44,13 @@ No High findings. The two Medium Electronegativity results are explained under E
     copy.
   - *files over 128 MB are not loaded*: unlock, reload from disk and backup preview return
     TOO_LARGE without a `readFile` of that file.
+- `src/main/vault/sidecars.security.test.ts` (F6): `readRegularFile` refuses directories, symlinks,
+  FIFOs (without calling `readFile`) and files over the cap; a FIFO or oversized `.plk` reads as
+  "held" at once and is neither removed nor released; a FIFO or oversized journal stops recovery
+  at once and every file is kept; hashing a FIFO backup fails at once. The same with real FIFOs
+  (`mkfifo`) on macOS and Linux (Windows has no FIFOs; the memory-backed tests run everywhere).
+- `src/main/session.test.ts` (F12): the spell checker is turned off, its languages cleared and its
+  download URL pointed at a missing local folder.
 - `src/main/psafe3/secrets.test.ts`: the default random source's buffers for salt, K, L and IV are
   zero after `encode` (and the file still decodes); the stretch worker's main-thread password copy
   is zero once the worker has started, and P' is unchanged.
@@ -80,7 +89,7 @@ no insecure content, no experimental features, no `webviewTag`, `navigateOnDragD
 DevTools only when unpackaged. App-wide: `will-navigate`, `will-redirect` and `will-attach-webview`
 prevented, `setWindowOpenHandler` denies. Session: every permission request and check denied;
 every request other than `file:`, `data:`, `blob:`, `devtools:` (and the dev server when
-unpackaged) is cancelled, so the app makes no network requests. No `shell.openExternal`, no custom
+unpackaged) is cancelled; together with F12's fix the app makes no network requests. No `shell.openExternal`, no custom
 protocols. E2E `wiring.spec.ts` proves `require`/`process`/`Buffer` are absent, `fetch`, remote
 navigation and `window.open` fail. OK. See F1 and F9.
 
@@ -96,7 +105,7 @@ icon in the bundle uses it (checked in `src/renderer` and the built `out/rendere
 `readTestMode` returns `undefined` when `app.isPackaged`, so the dialog stubs, the user-data
 override and the IPC spy are unreachable in an installed app; `ELECTRON_RENDERER_URL` is likewise
 ignored when packaged (`devServerUrl`). Covered by `lifecycle.test.ts` "is ignored in packaged
-builds". F1 is the remaining way to run a packaged build with a debugger attached.
+builds". With F1 fixed, `--inspect` is ignored too; F13 remains.
 
 ### File system and save pipeline (§A5, §A6)
 - `db` is the real path resolved at open; open and every read check it is a regular file
@@ -145,12 +154,13 @@ buffers are zeroed (`wipeModel`), the backup preview is dropped, and with unsave
 is first re-encrypted in memory (§B3). Replaced field values on edit and deleted records are zeroed.
 Strings (revealed passwords, typed text, IPC structured clones) can't be erased; the README says so.
 
-## Open findings in detail
+## Findings in detail
 
-**F1: Electron fuses (Medium).** `electron-builder.yml` has no `electronFuses` block, so an installed
-app can be started with `ELECTRON_RUN_AS_NODE=1` (a signed Node binary), with `NODE_OPTIONS`, or with
-`--inspect`, which attaches a debugger to the main process that later holds the unlocked vault.
-Proposed change (lead/WP5, needs a packaged-build smoke test on each OS):
+**F1: Electron fuses (Medium, fixed).** `electron-builder.yml` had no `electronFuses` block, so an
+installed app could be started with `ELECTRON_RUN_AS_NODE=1` (a signed Node binary), with
+`NODE_OPTIONS`, or with `--inspect`, which attaches a debugger to the main process that later holds
+the unlocked vault. Now set (electron-builder 26 flips them before signing, so the ad-hoc macOS
+signature still verifies; the release workflow's `codesign --verify --deep --strict` checks it):
 
 ```yaml
 electronFuses:
@@ -163,13 +173,45 @@ electronFuses:
 ```
 
 The app does not use `child_process.fork` (key stretching uses `worker_threads`), so `runAsNode:
-false` is safe. `grantFileProtocolExtraPrivileges` should stay on until F9 moves the page off
-`file://`. Playwright E2E runs the unpackaged Electron from `node_modules`, so it is unaffected.
+false` is safe. `grantFileProtocolExtraPrivileges` stays at Electron's default (on) until F9 moves
+the page off `file://`. Playwright E2E runs the unpackaged Electron from `node_modules`, so it is
+unaffected.
 
-**F6: sidecar reads (Low).** `readHolder` (`lockfile.ts`), the journal read (`rotation.ts`) and
-`hashOrNone` (`sidecars.ts`) call `readFile` on paths next to the vault without `lstat`. Fix for
-WP6's files: `lstat` first, refuse anything that is not a regular file, and cap sizes (a `.plk` is a
-few hundred bytes, a journal a few KB, a backup ≤ 128 MB).
+`build/smoke-packaged.mjs` now (a) reads the fuse wire of the packaged binary with `@electron/fuses`
+and checks all six settings (not possible inside an AppImage, whose binary is compressed; the deb
+check covers the same Linux build), (b) starts the app with `ELECTRON_RUN_AS_NODE=1 … -e <script>`
+and requires the app window instead of the script's output, and (c) starts it with `--inspect=0`
+and requires no "Debugger listening". Because Playwright's Electron launcher itself needs
+`--inspect`, the smoke test now reaches the window through Chromium's DevTools protocol
+(`--remote-debugging-port=0`, see F13) and quits with `Browser.close`. `NODE_OPTIONS` is checked
+through the fuse wire only: Electron already ignores almost all `NODE_OPTIONS` (including
+`--require`) in a packaged app, so a behavioural test would pass either way. Each check was seen to
+fail on a local Linux build with the matching fuse flipped back.
+
+**F6: sidecar reads (Low, fixed).** `readHolder` and `releaseLock` (`lockfile.ts`), the journal read
+(`rotation.ts`), `hashOrNone` (`sidecars.ts`) and the backup preview/restore reads (`vault.ts`) now go
+through `readRegularFile` (`src/main/fs/bounded.ts`): `lstat` first (symlinks not followed),
+anything but a regular file is EINVAL, and sizes are capped: `.plk` 16 KB, journal 64 KB, backups
+1 GB (our own backups are at most 128 MB; Save As over an existing file keeps that file as its
+`.bak` whatever its size, so this cap only stops absurd sizes), backup preview 128 MB. A refused
+`.plk` counts as "held by someone" (never removed automatically); a refused journal stops recovery
+with the "recovery failed" banner and every file is kept.
+
+**F12: spell-checker dictionary download (Medium, fixed).** `webPreferences.spellcheck: false` only
+stops checking inside the page. The session still loads a hunspell dictionary for the UI language
+and, on Linux and Windows, downloads it from Google's CDN (`redirector.gvt1.com/edgedl/chrome/dict/
+en-us-10-1.bdic`) through the browser process, which our `webRequest` filter never sees. Fix:
+`disableSpellChecker` (`src/main/session.ts`) turns the spell checker off, clears its languages and
+points the download URL at a missing `file://` folder, for every session (`session-created`) and
+again for the default session. Checked with Chromium's net log (`--log-net-log`) while typing in the
+unlock field: 12 requests to `gvt1.com` before, none after. macOS uses the OS spell checker and never
+downloaded.
+
+**F13: `--remote-debugging-port` (Low, open).** No Electron fuse disables this Chromium switch. The
+main process could refuse to start when `app.commandLine.hasSwitch('remote-debugging-port')` in a
+packaged build, but the packaged smoke test relies on it (see F1); left for the lead to decide.
+Anyone able to launch the app with extra arguments as the user can also read that user's files and
+keystrokes, so this is outside the threat model.
 
 **F9: `file://` origin (Low).** A custom `app://` protocol (`protocol.handle`) would give the page a
 unique origin so `'self'` no longer matches arbitrary local files. There is no HTML-injection path

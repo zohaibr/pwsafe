@@ -22,6 +22,7 @@ import {
   type VaultStatus,
 } from '../../shared/types'
 import type { FileSystem } from '../fs/types'
+import { readRegularFile } from '../fs/bounded'
 import { errnoOf, isNotFound } from '../fs/types'
 import { isNetworkFs } from '../fs/fsType'
 import type { LockHolder, LockPlatform } from '../lockfile/encoding'
@@ -993,7 +994,7 @@ export class Vault {
       if (b.sizeBytes > MAX_FILE_BYTES) return err(ErrorCode.TOO_LARGE)
       let bytes: Uint8Array
       try {
-        bytes = await this.deps.fs.readFile(b.path)
+        bytes = await readRegularFile(this.deps.fs, b.path, MAX_FILE_BYTES)
       } catch {
         return err(ErrorCode.IO_ERROR, 'That backup could not be read.')
       }
@@ -1037,7 +1038,7 @@ export class Vault {
         return fail(ErrorCode.READ_ONLY, DEFAULT_MESSAGES.READ_ONLY, READ_ONLY_TEXT['newer-format'])
       }
       try {
-        if (sha256Hex(await this.deps.fs.readFile(p.path)) !== p.sha256) {
+        if (sha256Hex(await readRegularFile(this.deps.fs, p.path, MAX_FILE_BYTES)) !== p.sha256) {
           return err(ErrorCode.IO_ERROR, 'That backup changed. Preview it again.')
         }
       } catch {

@@ -10,6 +10,7 @@ import { basename, join as joinPath } from 'node:path'
 import type { Banner } from '../../shared/types'
 import type { FileSystem } from '../fs/types'
 import { isNotFound } from '../fs/types'
+import { MAX_JOURNAL_BYTES, readRegularFile } from '../fs/bounded'
 import { GENERATIONS, hashOrNone, sha256Hex, type Sidecars, sidecarsFor, TAG_RE } from './sidecars'
 
 export interface JournalMove {
@@ -224,7 +225,7 @@ export async function recoverSidecars(
     if (entries.includes(basename(sc.journal))) {
       let raw: Uint8Array | undefined
       try {
-        raw = await fs.readFile(sc.journal)
+        raw = await readRegularFile(fs, sc.journal, MAX_JOURNAL_BYTES)
       } catch (e) {
         if (!isNotFound(e)) throw e
       }

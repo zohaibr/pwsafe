@@ -6,6 +6,7 @@
 // at the key-stretch call, P' and K at the cipher factory, L at createHmac (mocked below), and the
 // decrypted field bytes through getExportData (which shares them with the model).
 import { createHash } from 'node:crypto'
+import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode } from '../../shared/errors'
 import { MAX_FILE_BYTES } from '../../shared/limits'
@@ -160,7 +161,10 @@ describe('§A4.8: owned key buffers are zero after lock', () => {
   })
 })
 
-/** The memory file system, but reporting `size` for paths in `oversized` and counting reads. */
+/**
+ * The memory file system, but reporting `size` for paths in `oversized` and recording reads.
+ * Paths are compared resolved: the vault resolves them (on Windows '/v/x' becomes 'C:\\v\\x').
+ */
 class SizedFs extends MemoryFileSystem {
   readonly reads: string[] = []
   constructor(private readonly oversized: Set<string>) {
@@ -168,10 +172,11 @@ class SizedFs extends MemoryFileSystem {
   }
   override async lstat(path: string): Promise<FileStat> {
     const st = await super.lstat(path)
-    return this.oversized.has(path) ? { ...st, size: MAX_FILE_BYTES + 1 } : st
+    const big = [...this.oversized].some((p) => resolve(p) === resolve(path))
+    return big ? { ...st, size: MAX_FILE_BYTES + 1 } : st
   }
   override async readFile(path: string): Promise<Uint8Array> {
-    this.reads.push(path)
+    this.reads.push(resolve(path))
     return super.readFile(path)
   }
 }
@@ -184,7 +189,7 @@ describe('§A4 step 1 before reading: files over 128 MB are not loaded', () => {
     unwrap(await vault.open(DB))
     const r = await vault.unlock(PASSWORD)
     expect(r.ok || r.error.code).toBe(ErrorCode.TOO_LARGE)
-    expect(fs.reads).not.toContain(DB)
+    expect(fs.reads).not.toContain(resolve(DB))
     expect(vault.getState().status).toBe('locked')
   })
 
@@ -213,6 +218,8 @@ describe('§A4 step 1 before reading: files over 128 MB are not loaded', () => {
     const [backup] = unwrap(await vault.listBackups())
     const r = await vault.previewBackup(backup!.id, PASSWORD)
     expect(r.ok || r.error.code).toBe(ErrorCode.TOO_LARGE)
-    expect(fs.reads).not.toContain(`${DB}.bak`)
+    expect(fs.reads).not.toContain(resolve(`${DB}.bak`))
+    // Sanity: reads are recorded under the same path form (the database was read at unlock).
+    expect(fs.reads).toContain(resolve(DB))
   })
 })

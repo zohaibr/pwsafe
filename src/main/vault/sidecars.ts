@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto'
 import { basename, dirname, join } from 'node:path'
 import type { FileSystem } from '../fs/types'
 import { isNotFound } from '../fs/types'
+import { MAX_BACKUP_BYTES, readRegularFile } from '../fs/bounded'
 import { BACKUP_GENERATIONS } from '../../shared/limits'
 
 export const TAG_RE = /^[0-9a-f]{12}$/
@@ -63,7 +64,7 @@ export function sha256Hex(data: Uint8Array): string {
 /** SHA-256 of a file, or undefined when it does not exist. Other errors are thrown. */
 export async function hashOrNone(fs: FileSystem, path: string): Promise<string | undefined> {
   try {
-    return sha256Hex(await fs.readFile(path))
+    return sha256Hex(await readRegularFile(fs, path, MAX_BACKUP_BYTES))
   } catch (e) {
     if (isNotFound(e)) return undefined
     throw e

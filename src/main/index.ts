@@ -27,6 +27,7 @@ import { RecentFiles } from './ipc/recentFiles'
 import { isAppUrl, registerIpc, type SenderInfo } from './ipc/register'
 import { SettingsStore } from './ipc/settings'
 import { ipcSpyList, readTestMode } from './ipc/testMode'
+import { disableSpellChecker } from './session'
 import { Vault } from './vault'
 import { appFileUrl, createMainWindow, devServerUrl } from './window'
 
@@ -65,6 +66,8 @@ if (!app.requestSingleInstanceLock()) {
     if (path && controller) void openFromOs(path)
   })
   hardenWebContents()
+  // Every session, including the default one, as soon as it exists: no spell-checker downloads.
+  app.on('session-created', (ses) => disableSpellChecker(ses, process.platform))
   void app.whenReady().then(start)
 }
 
@@ -90,6 +93,8 @@ function hardenWebContents(): void {
 /** Denies every permission (camera, notifications, clipboard-read…) and all remote loads. */
 function hardenSession(): void {
   const ses = session.defaultSession
+  // Also here, in case the default session was created before our 'session-created' listener.
+  disableSpellChecker(ses, process.platform)
   ses.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
   ses.setPermissionCheckHandler(() => false)
   const dev = devServerUrl(app.isPackaged)
