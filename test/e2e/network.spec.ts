@@ -54,6 +54,11 @@ interface Recorded {
 }
 
 async function installRecorders(app: ElectronApplication): Promise<void> {
+  // The app installs its own session filter at startup, before it creates the window, and a new
+  // filter replaces the old one. Wait for the window so ours goes in last (on the macOS runner
+  // startup is slow enough that installing earlier was silently undone). Startup requests before
+  // this point are still covered by the net log.
+  await (await app.firstWindow()).getByTestId('status').waitFor({ state: 'attached' })
   await app.evaluate(({ session }, localSchemes) => {
     const g = globalThis as { __wp9Net?: Recorded }
     const rec: Recorded = { session: [], node: [] }
