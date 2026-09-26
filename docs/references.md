@@ -33,6 +33,13 @@ Changing any pin needs lead review.
 - The XML importer skips entries with an empty title or an empty password (`XMLFileHandlers.cpp`).
 - `--export=FILE --xml` crashes (segfault) on a safe containing an alias or shortcut entry.
 - `--add` ignores a `UUID=` field; the CLI always assigns a new UUID.
+- `--add` values can't contain `,` or `;`, be empty, or contain line breaks; without `Password=` it
+  generates a random password. New safes use 327,680 iterations.
+- `--print` shows a linked entry's password as `[Alias]` or `[Shortcut]`; `--export=FILE --text`
+  crashes on aliases and shortcuts just like `--xml`.
+- The V3 HMAC covers field data only, not field type or length, so an edit made with the key (for
+  example removing an END field so two records merge) can't be detected by it. Without the key,
+  any ciphertext change is rejected (test/integration).
 
 ## pypwsafe (test input only)
 - Repository: https://github.com/ronys/pypwsafe, commit `05ae8a2f7de07e1606d062a0135c43ffc0b0e22c`, GPLv2.

@@ -1,0 +1,2 @@
+*.psafe3 binary
+*.expected.json text eol=lf

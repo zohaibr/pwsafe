@@ -1,0 +1,70 @@
+{
+  "file": "cli-import.psafe3",
+  "madeWith": "pwsafe-cli, Password Safe 1.25.0 (da4460325ac41ccd798a52d9b250ef4d5c768abc)",
+  "password": "wp8-fixture-import",
+  "formatVersion": "0x0311",
+  "iterations": 327680,
+  "entryCount": 6,
+  "entries": [
+    {
+      "uuid": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0001",
+      "group": "Notes.Multi",
+      "title": "Multi line",
+      "username": "multi",
+      "password": "ml-pw",
+      "url": "",
+      "email": "",
+      "notes": "line one\r\nline two\r\n\r\nline four"
+    },
+    {
+      "uuid": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0002",
+      "group": "",
+      "title": "Commas, semicolons; and ]]> end",
+      "username": "x]]>y",
+      "password": "a,b;c]]>d",
+      "url": "https://example.com/?q=1,2;3",
+      "email": "first.last+tag@example.org",
+      "notes": "Contains ]]> and <tags> & ampersands\r\nand a second line"
+    },
+    {
+      "uuid": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0003",
+      "group": "",
+      "title": "Empty username element",
+      "username": "",
+      "password": "no-user",
+      "url": "",
+      "email": "",
+      "notes": ""
+    },
+    {
+      "uuid": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0004",
+      "group": "Big",
+      "title": "Very long notes",
+      "username": "",
+      "password": "long-pw",
+      "url": "",
+      "email": "",
+      "notes": "Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value Long value "
+    },
+    {
+      "uuid": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0005",
+      "group": "Émoji.🔒 Locked",
+      "title": "Emoji and CJK 🎉 中文",
+      "username": "ユーザー",
+      "password": "🔑🗝️ key",
+      "url": "",
+      "email": "",
+      "notes": "第一行\r\nsecond 🎈\r\nnaïve café"
+    },
+    {
+      "uuid": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0006",
+      "group": "x\\.y.z",
+      "title": "Imported literal dot",
+      "username": "",
+      "password": "dot2",
+      "url": "",
+      "email": "",
+      "notes": ""
+    }
+  ]
+}

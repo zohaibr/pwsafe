@@ -1,0 +1,147 @@
+{
+  "file": "cli-add.psafe3",
+  "madeWith": "pwsafe-cli, Password Safe 1.25.0 (da4460325ac41ccd798a52d9b250ef4d5c768abc)",
+  "password": "wp8-fixture-add",
+  "formatVersion": "0x0311",
+  "iterations": 327680,
+  "entryCount": 13,
+  "entries": [
+    {
+      "uuid": "f809d949bfc1456db01d04860520d551",
+      "group": "Banking.Online",
+      "title": "Example Bank",
+      "username": "jordan.example",
+      "password": "p&<>\"q'x!",
+      "url": "https://bank.example.com/login?a=1&b=2",
+      "email": "jordan@example.com",
+      "notes": "Single line note with <xml> & \"quotes\""
+    },
+    {
+      "uuid": "7f01d7138b484e059794f820157095ac",
+      "group": "a.b.c",
+      "title": "Nested",
+      "username": "deep",
+      "password": "nested-pw",
+      "url": "",
+      "email": "",
+      "notes": ""
+    },
+    {
+      "uuid": "55cd2f3f4e8b411caeeac904153daff1",
+      "group": "Dotted\\.Name.Sub",
+      "title": "Literal dot group",
+      "username": "",
+      "password": "dot-pw",
+      "url": "",
+      "email": "",
+      "notes": ""
+    },
+    {
+      "uuid": "9f3f15c111e34572b77bd07e8c345f7e",
+      "group": "Top",
+      "title": "Leading dot title .x",
+      "username": "",
+      "password": "x.y.z",
+      "url": "",
+      "email": "",
+      "notes": ""
+    },
+    {
+      "uuid": "6ffe0cbcc7e6498a88531e928259d7b2",
+      "group": "Grüße.日本",
+      "title": "Unicode ü 日本語 🔑",
+      "username": "Zoë",
+      "password": "pä$$wörd🔐",
+      "url": "",
+      "email": "",
+      "notes": "Ελληνικά עברית العربية"
+    },
+    {
+      "uuid": "de7663f030074f398fbb0e2548475ec3",
+      "group": "",
+      "title": "Minimal",
+      "username": "",
+      "password": "only-password",
+      "url": "",
+      "email": "",
+      "notes": ""
+    },
+    {
+      "uuid": "91eb3c3162424296a44c68e00b9fc0dd",
+      "group": "",
+      "title": "Times",
+      "username": "",
+      "password": "timed",
+      "url": "",
+      "email": "",
+      "notes": "",
+      "created": "2024-01-02T03:04:05.000Z",
+      "passwordModified": "2024-02-03T04:05:06.000Z",
+      "modified": "2024-03-04T05:06:07.000Z",
+      "expires": "2030-05-06T07:08:09.000Z"
+    },
+    {
+      "uuid": "cb657eb997d04d5e9626bf3c035fae6c",
+      "group": "",
+      "title": "With history",
+      "username": "",
+      "password": "current",
+      "url": "",
+      "email": "",
+      "notes": "",
+      "hasHistory": true
+    },
+    {
+      "uuid": "f02aa4254e1d4b6f869469aa5affa966",
+      "group": "",
+      "title": "With 2FA",
+      "username": "",
+      "password": "totp-pw",
+      "url": "",
+      "email": "",
+      "notes": "",
+      "hasTotp": true
+    },
+    {
+      "uuid": "6a1a59d46cf04e4dacb5863a5721d816",
+      "group": "",
+      "title": "Extras",
+      "username": "",
+      "password": "extras-pw",
+      "url": "",
+      "email": "",
+      "notes": ""
+    },
+    {
+      "uuid": "0be29df72ab84fa288bd9ef95203c673",
+      "group": "",
+      "title": "Protected entry",
+      "username": "",
+      "password": "prot-pw",
+      "url": "",
+      "email": "",
+      "notes": "",
+      "protected": true
+    },
+    {
+      "uuid": "08bc41240f9c4161bcd7ff06a1fe9c4b",
+      "group": "Dup",
+      "title": "Same title",
+      "username": "",
+      "password": "first",
+      "url": "",
+      "email": "",
+      "notes": ""
+    },
+    {
+      "uuid": "9519f0d5f2ff4b73a6e0c238fcdd846e",
+      "group": "Dup2",
+      "title": "Same title",
+      "username": "",
+      "password": "second",
+      "url": "",
+      "email": "",
+      "notes": ""
+    }
+  ]
+}
