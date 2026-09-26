@@ -198,6 +198,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Only for the optional per-release notes in docs/release-notes/<tag>.md.
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: docs/release-notes
       - uses: actions/download-artifact@v4
         with:
           pattern: installers-*
@@ -219,6 +223,10 @@ jobs:
           {
             echo "## psafe3 Opener $TAG"
             echo
+            if [ -f "../docs/release-notes/$TAG.md" ]; then
+              cat "../docs/release-notes/$TAG.md"
+              echo
+            fi
             if [ -n "$CSC_LINK" ] && [ -n "$CSC_KEY_PASSWORD" ] && [ -n "$APPLE_ID" ] \
               && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
               echo "macOS: signed with a Developer ID certificate and notarized by Apple."

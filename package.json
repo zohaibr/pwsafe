@@ -1,7 +1,7 @@
 {
   "name": "psafe3-opener",
   "productName": "psafe3 Opener",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "license": "MIT",
   "private": true,
   "description": "Open and edit Password Safe V3 (.psafe3) files on your desktop, offline.",
