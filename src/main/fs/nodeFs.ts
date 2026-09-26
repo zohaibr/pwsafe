@@ -48,6 +48,15 @@ export function createNodeFileSystem(options: NodeFileSystemOptions = {}): FileS
         constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY,
         mode,
       )
+      // open(2) applies the umask to `mode`; §A5 step 3 needs the database's exact bits.
+      if (platform !== 'win32') {
+        try {
+          await h.chmod(mode)
+        } catch (e) {
+          await h.close()
+          throw e
+        }
+      }
       return {
         async write(data) {
           let off = 0

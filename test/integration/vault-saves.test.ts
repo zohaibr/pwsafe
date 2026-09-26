@@ -166,11 +166,9 @@ describe.runIf(!WINDOWS)(`§A5 saves and backup rotation on a real disk (${PLATF
     expect(unwrap(again.getEntry(state.target!)).title).toBe(target.title)
     unwrap(await again.close())
   }, 60_000)
-  // BUG (src/main/vault/commit.ts writeNewFile / src/main/fs/nodeFs.ts createExclusive): §A5 step 3
-  // creates `.new` "with db's permission bits", but open(2) applies the process umask to the mode,
-  // so a 0660 database comes back 0640 after a save under the usual umask 022 (a group-shared
-  // vault loses group write). The staged backup keeps 0660 because copyFile keeps the mode.
-  it.fails('a save keeps the database permission bits (0660) whatever the umask', async () => {
+  // §A5 step 3 creates `.new` "with db's permission bits". open(2) applies the umask to the mode,
+  // so createExclusive sets the bits again explicitly; without that a 0660 vault became 0640.
+  it('a save keeps the database permission bits (0660) whatever the umask', async () => {
     const t = tempCopy('cli-links')
     chmodSync(t.db, 0o660)
     const old = process.umask(0o022)
