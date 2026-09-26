@@ -1,0 +1,250 @@
+# Builds the installers (docs/execution-plan.md WP5 and "What you get at the end").
+# - Tag push v*: build, smoke-test and attach every installer to a GitHub release.
+# - workflow_dispatch: build and smoke-test; a release is made only when run on a v* tag.
+# - Pull requests touching packaging: build and smoke-test only, never signs or releases.
+# macOS signing + notarization turn on when all five secrets exist:
+#   CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID.
+# Without them the macOS app is ad-hoc signed and the release notes say "unsigned build".
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - electron-builder.yml
+      - build/**
+      - .github/workflows/release.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  package:
+    name: Package and smoke test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      - name: Decide macOS signing mode
+        id: signing
+        if: runner.os == 'macOS'
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Only presence is tested; values are never printed. PR runs never sign.
+          if [ "${{ github.event_name }}" != "pull_request" ] && [ -n "$CSC_LINK" ] \
+            && [ -n "$CSC_KEY_PASSWORD" ] && [ -n "$APPLE_ID" ] \
+            && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            echo "mode=signed" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=adhoc" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Package (macOS, ad-hoc signed, arm64 + x64)
+        if: runner.os == 'macOS' && steps.signing.outputs.mode == 'adhoc'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # electron-builder skips all signing on PR builds (it sees GITHUB_BASE_REF). The ad-hoc
+          # signature uses no secrets, so allow it; without it the arm64 app would not launch.
+          CSC_FOR_PULL_REQUEST: 'true'
+        run: npm run dist -- --mac
+
+      - name: Package (macOS, Developer ID signed + notarized, arm64 + x64)
+        if: runner.os == 'macOS' && steps.signing.outputs.mode == 'signed'
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        # The Developer ID certificate name contains "(TEAMID)", so the team id selects it.
+        run: >-
+          npm run dist -- --mac
+          -c.mac.identity="$APPLE_TEAM_ID"
+          -c.mac.entitlements=build/entitlements.mac.signed.plist
+          -c.mac.entitlementsInherit=build/entitlements.mac.signed.plist
+
+      - name: Package (Windows NSIS)
+        if: runner.os == 'Windows'
+        run: npm run dist -- --win
+
+      - name: Package (Linux AppImage + deb)
+        if: runner.os == 'Linux'
+        run: npm run dist -- --linux
+
+      - name: List installers
+        run: ls -la release
+
+      # ---- Smoke tests: install (where it applies), launch the real app, close it cleanly ----
+
+      - name: Smoke test (macOS dmg, both architectures)
+        if: runner.os == 'macOS'
+        env:
+          MODE: ${{ steps.signing.outputs.mode }}
+        run: |
+          set -euo pipefail
+          for dmg in release/*.dmg; do
+            echo "::group::$dmg"
+            mnt="$(mktemp -d)"
+            hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt"
+            dest="$(mktemp -d)"
+            cp -R "$mnt/psafe3 Opener.app" "$dest/"
+            hdiutil detach "$mnt"
+            app="$dest/psafe3 Opener.app"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            info="$(codesign -dv --verbose=4 "$app" 2>&1)"
+            echo "$info"
+            if [ "$MODE" = "adhoc" ]; then
+              grep -q '^Signature=adhoc$' <<<"$info" || { echo "::error::$dmg is not ad-hoc signed"; exit 1; }
+            else
+              grep -q '^Authority=Developer ID Application' <<<"$info" || { echo "::error::$dmg lacks a Developer ID signature"; exit 1; }
+              xcrun stapler validate "$app"
+            fi
+            grep -q 'flags=.*runtime' <<<"$info" || { echo "::error::$dmg lacks the hardened runtime"; exit 1; }
+            exe="$app/Contents/MacOS/psafe3 Opener"
+            archs="$(lipo -archs "$exe")"
+            host="$(uname -m)"
+            if [ "$archs" = "$host" ] || { [ "$archs" = "x86_64" ] && arch -x86_64 /usr/bin/true 2>/dev/null; }; then
+              node build/smoke-packaged.mjs "$exe"
+            else
+              echo "::notice::Skipping launch of $archs build on a $host runner without Rosetta"
+            fi
+            echo "::endgroup::"
+          done
+
+      - name: Install (Windows, silent per-user NSIS)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem release -Filter *.exe | Select-Object -First 1
+          $p = Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Installer exited with $($p.ExitCode)" }
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter 'psafe3 Opener.exe' |
+            Select-Object -First 1
+          if (-not $exe) { throw 'Installed app not found under %LOCALAPPDATA%\Programs' }
+          "APP_EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Smoke test (Windows, installed app)
+        if: runner.os == 'Windows'
+        run: node build/smoke-packaged.mjs "$APP_EXE"
+
+      - name: Smoke test (Linux AppImage)
+        if: runner.os == 'Linux'
+        env:
+          # Runners lack libfuse2; run the AppImage by extracting it instead of mounting.
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: xvfb-run -a node build/smoke-packaged.mjs "$(ls "$PWD"/release/*.AppImage)" --no-sandbox
+
+      - name: Smoke test (Linux deb, installed)
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -qy "$(ls "$PWD"/release/*.deb)"
+          xvfb-run -a node build/smoke-packaged.mjs "/opt/psafe3 Opener/psafe3-opener" --no-sandbox
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ runner.os }}
+          path: |
+            release/*.dmg
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+          if-no-files-found: error
+          retention-days: ${{ github.event_name == 'pull_request' && 3 || 30 }}
+
+  release:
+    name: Create GitHub release
+    needs: package
+    if: github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          path: dist-release
+          merge-multiple: true
+
+      - name: Write checksums and release notes
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          cd dist-release
+          sha256sum -- * > SHA256SUMS.txt
+          {
+            echo "## psafe3 Opener $TAG"
+            echo
+            if [ -n "$CSC_LINK" ] && [ -n "$CSC_KEY_PASSWORD" ] && [ -n "$APPLE_ID" ] \
+              && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+              echo "macOS: signed with a Developer ID certificate and notarized by Apple."
+            else
+              echo "### macOS: unsigned build"
+              echo
+              echo "This is an **unsigned build**: the app is ad-hoc signed (so it runs on Apple Silicon) but not notarized by Apple. The first time you open it:"
+              echo
+              echo "1. Open the \`.dmg\` for your Mac (\`arm64\` for Apple Silicon, \`x64\` for Intel) and drag **psafe3 Opener** to **Applications**."
+              echo "2. Open the app. macOS says it can't verify the developer; click **Done** (or **Cancel**)."
+              echo "3. Open **System Settings → Privacy & Security**, scroll to **Security**, and click **Open Anyway** next to the psafe3 Opener message."
+              echo "4. Confirm with **Open Anyway** and your login password. macOS remembers this; later launches open normally."
+            fi
+            echo
+            echo "### Windows"
+            echo
+            echo "The installer is not code-signed. If SmartScreen warns, choose **More info → Run anyway**. It installs for the current user only and never asks for administrator rights."
+            echo
+            echo "### Linux"
+            echo
+            echo "\`.AppImage\` (make it executable and run it) or \`.deb\` (\`sudo apt install ./psafe3-opener-*.deb\`)."
+            echo
+            echo "### Checksums (SHA-256)"
+            echo
+            echo '```'
+            cat SHA256SUMS.txt
+            echo '```'
+          } > ../release-notes.md
+
+      - name: Create release and upload installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          prerelease=()
+          case "$TAG" in *-*) prerelease=(--prerelease) ;; esac
+          gh release create "$TAG" dist-release/* \
+            --verify-tag --title "psafe3 Opener $TAG" --notes-file release-notes.md "${prerelease[@]}"
