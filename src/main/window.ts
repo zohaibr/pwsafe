@@ -1,9 +1,20 @@
 import { join } from 'node:path'
-import { BrowserWindow, shell } from 'electron'
+import { pathToFileURL } from 'node:url'
+import { BrowserWindow } from 'electron'
 import { WINDOW_MIN_HEIGHT, WINDOW_MIN_WIDTH } from '@shared/limits'
 
-// Hardened window (docs/execution-plan.md WP7). WP0 stub; WP7 owns this file.
-export function createMainWindow(): BrowserWindow {
+// Hardened window (docs/execution-plan.md WP7): isolated, sandboxed renderer with no Node, web
+// security on, no navigation, no new windows, no webviews, DevTools only in unpackaged builds.
+
+/** The file URL of the bundled page; IPC accepts messages only from a frame showing it. */
+export const appFileUrl = (): string =>
+  pathToFileURL(join(import.meta.dirname, '../renderer/index.html')).href
+
+/** The dev-server URL (electron-vite dev only; never set in a packaged build). */
+export const devServerUrl = (isPackaged: boolean): string | undefined =>
+  isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL'] || undefined
+
+export function createMainWindow(options: { isPackaged: boolean }): BrowserWindow {
   const win = new BrowserWindow({
     width: 1200,
     height: 780,
@@ -16,22 +27,23 @@ export function createMainWindow(): BrowserWindow {
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
+      nodeIntegrationInWorker: false,
+      nodeIntegrationInSubFrames: false,
       webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
+      webviewTag: false,
+      navigateOnDragDrop: false,
       spellcheck: false,
+      devTools: !options.isPackaged,
+      disableBlinkFeatures: 'Auxclick',
     },
   })
 
   win.once('ready-to-show', () => win.show())
 
-  // No navigation away from the bundled app and no new windows.
-  win.webContents.on('will-navigate', (event) => event.preventDefault())
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://')) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
-
-  const devUrl = process.env['ELECTRON_RENDERER_URL']
-  if (devUrl) void win.loadURL(devUrl)
+  const dev = devServerUrl(options.isPackaged)
+  if (dev) void win.loadURL(dev)
   else void win.loadFile(join(import.meta.dirname, '../renderer/index.html'))
   return win
 }

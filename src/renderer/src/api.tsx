@@ -1,21 +1,10 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import type { PsafeApi } from '@shared/ipc'
 import type { Result } from '@shared/errors'
-import type { GeneratorOptions, VaultState } from '@shared/types'
+import type { GeneratorOptions } from '@shared/types'
 
-/** What the user picked in the "file is open in another app" dialog (§A6). */
-export type LockChoice = 'read-only' | 'remove-lock'
-
-/**
- * Calls the UI needs that `PsafeApi` does not have yet. They are optional: when the real bridge
- * lacks them the UI hides the matching buttons. Requested as a contract change for WP7.
- */
-export interface PendingApiAdditions {
-  /** Unlock a file whose `.plk` is held by someone else, read-only or after removing the lock. */
-  unlockWithLockChoice(password: string, choice: LockChoice): Promise<Result<VaultState>>
-}
-
-export type RendererApi = PsafeApi & Partial<PendingApiAdditions>
+/** The API the UI runs against: the preload bridge `window.psafe`, or the mock in tests. */
+export type RendererApi = PsafeApi
 
 /**
  * Password generator used by the editor: `generatePassword` from src/shared/generator.ts with the

@@ -2,53 +2,49 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { IpcChannel, type PsafeApi } from '@shared/ipc'
 import type { VaultState } from '@shared/types'
 
-// Narrow bridge: one named function per channel, no generic `invoke` exposed (WP7 owns this file).
-const invoke =
-  (channel: string) =>
-  (...args: unknown[]) =>
-    ipcRenderer.invoke(channel, ...args)
+// Narrow bridge (WP7): one named function per channel with a fixed argument list; no generic
+// `invoke`, `send` or `ipcRenderer` is exposed. Main validates every argument again.
+const C = IpcChannel
+const call = ipcRenderer.invoke.bind(ipcRenderer)
 
-function subscribe<T extends unknown[]>(
-  channel: string,
-  listener: (...args: T) => void,
-): () => void {
-  const wrapped = (_event: IpcRendererEvent, ...args: unknown[]) => listener(...(args as T))
+function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
+  const wrapped = (_event: IpcRendererEvent, value: T) => listener(value)
   ipcRenderer.on(channel, wrapped)
-  return () => ipcRenderer.removeListener(channel, wrapped)
+  return () => {
+    ipcRenderer.removeListener(channel, wrapped)
+  }
 }
 
 const api: PsafeApi = {
-  chooseFile: invoke(IpcChannel.chooseFile) as PsafeApi['chooseFile'],
-  listRecentFiles: invoke(IpcChannel.listRecentFiles) as PsafeApi['listRecentFiles'],
-  chooseRecentFile: invoke(IpcChannel.chooseRecentFile) as PsafeApi['chooseRecentFile'],
-  unlock: invoke(IpcChannel.unlock) as PsafeApi['unlock'],
-  cancelUnlock: invoke(IpcChannel.cancelUnlock) as PsafeApi['cancelUnlock'],
-  lock: invoke(IpcChannel.lock) as PsafeApi['lock'],
-  getState: invoke(IpcChannel.getState) as PsafeApi['getState'],
-  closeFile: invoke(IpcChannel.closeFile) as PsafeApi['closeFile'],
-  listEntries: invoke(IpcChannel.listEntries) as PsafeApi['listEntries'],
-  listGroups: invoke(IpcChannel.listGroups) as PsafeApi['listGroups'],
-  getEntry: invoke(IpcChannel.getEntry) as PsafeApi['getEntry'],
-  revealPassword: invoke(IpcChannel.revealPassword) as PsafeApi['revealPassword'],
-  copyField: invoke(IpcChannel.copyField) as PsafeApi['copyField'],
-  saveEntry: invoke(IpcChannel.saveEntry) as PsafeApi['saveEntry'],
-  deleteEntry: invoke(IpcChannel.deleteEntry) as PsafeApi['deleteEntry'],
-  reloadFromDisk: invoke(IpcChannel.reloadFromDisk) as PsafeApi['reloadFromDisk'],
-  save: invoke(IpcChannel.save) as PsafeApi['save'],
-  saveAs: invoke(IpcChannel.saveAs) as PsafeApi['saveAs'],
-  listBackups: invoke(IpcChannel.listBackups) as PsafeApi['listBackups'],
-  previewBackup: invoke(IpcChannel.previewBackup) as PsafeApi['previewBackup'],
-  restoreBackup: invoke(IpcChannel.restoreBackup) as PsafeApi['restoreBackup'],
-  exportXml: invoke(IpcChannel.exportXml) as PsafeApi['exportXml'],
-  revealInFolder: invoke(IpcChannel.revealInFolder) as PsafeApi['revealInFolder'],
-  getSettings: invoke(IpcChannel.getSettings) as PsafeApi['getSettings'],
-  setSettings: invoke(IpcChannel.setSettings) as PsafeApi['setSettings'],
-  respondToClose: invoke(IpcChannel.respondToClose) as PsafeApi['respondToClose'],
-  onStateChanged: (listener) =>
-    subscribe<[VaultState]>(IpcChannel.stateChanged, (state) => listener(state)),
-  onCloseRequested: (listener) =>
-    subscribe<['quit' | 'close-window']>(IpcChannel.closeRequested, (reason) => listener(reason)),
-  reportActivity: () => ipcRenderer.send(IpcChannel.reportActivity),
+  chooseFile: () => call(C.chooseFile),
+  listRecentFiles: () => call(C.listRecentFiles),
+  chooseRecentFile: (id) => call(C.chooseRecentFile, id),
+  unlock: (password, options) => call(C.unlock, password, options),
+  cancelUnlock: () => call(C.cancelUnlock),
+  lock: (options) => call(C.lock, options),
+  getState: () => call(C.getState),
+  closeFile: () => call(C.closeFile),
+  listEntries: () => call(C.listEntries),
+  listGroups: () => call(C.listGroups),
+  getEntry: (uuid) => call(C.getEntry, uuid),
+  revealPassword: (uuid) => call(C.revealPassword, uuid),
+  copyField: (uuid, field) => call(C.copyField, uuid, field),
+  saveEntry: (draft) => call(C.saveEntry, draft),
+  deleteEntry: (uuid) => call(C.deleteEntry, uuid),
+  reloadFromDisk: () => call(C.reloadFromDisk),
+  save: () => call(C.save),
+  saveAs: () => call(C.saveAs),
+  listBackups: () => call(C.listBackups),
+  previewBackup: (id, password) => call(C.previewBackup, id, password),
+  restoreBackup: (id) => call(C.restoreBackup, id),
+  exportXml: (options) => call(C.exportXml, options),
+  revealInFolder: (filePath) => call(C.revealInFolder, filePath),
+  getSettings: () => call(C.getSettings),
+  setSettings: (settings) => call(C.setSettings, settings),
+  respondToClose: (choice) => call(C.respondToClose, choice),
+  onStateChanged: (listener) => subscribe<VaultState>(C.stateChanged, listener),
+  onCloseRequested: (listener) => subscribe<'quit' | 'close-window'>(C.closeRequested, listener),
+  reportActivity: () => ipcRenderer.send(C.reportActivity),
 }
 
-contextBridge.exposeInMainWorld('psafe', api)
+contextBridge.exposeInMainWorld('psafe', Object.freeze(api))

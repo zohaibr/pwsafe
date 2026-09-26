@@ -215,8 +215,8 @@ export function VaultScreen(props: {
     void refresh()
   }
 
-  const doLock = async () => {
-    const r = await api.lock()
+  const doLock = async (discardChanges = false) => {
+    const r = await api.lock(discardChanges ? { discardChanges: true } : undefined)
     if (r.ok) onState(r.value)
     else setDialog({ kind: 'error', error: r.error })
   }
@@ -278,11 +278,8 @@ export function VaultScreen(props: {
   const unsavedDiscard = async (action: UnsavedAction) => {
     setDialog(null)
     if (isCloseAction(action)) await answerClose('discard')
-    else if (action === 'lock') {
-      // "Don't save" drops the changes: reload the file as it is on disk, then lock.
-      await api.reloadFromDisk()
-      await doLock()
-    } else if (action === 'close') await doClose()
+    else if (action === 'lock') await doLock(true)
+    else if (action === 'close') await doClose()
     else await doOpenOther()
   }
 
