@@ -27,7 +27,12 @@ Changing any pin needs lead review.
 - A new safe made by the CLI is format `0x0311` (`FromDatabaseFormat="3.17"` in its XML).
 - **Quirk for WP8:** in a local test, exporting a title containing a space and importing that XML
   into another safe turned `Example Bank` into `Example.Bank`. Investigate before using the import
-  direction as an oracle for values with spaces.
+  direction as an oracle for values with spaces. Cause (found in WP4): the CLI exports with
+  `delimiter=" "`, and the importer turns the delimiter in titles into `.`. Our exporter picks a
+  delimiter that appears in no title or notes.
+- The XML importer skips entries with an empty title or an empty password (`XMLFileHandlers.cpp`).
+- `--export=FILE --xml` crashes (segfault) on a safe containing an alias or shortcut entry.
+- `--add` ignores a `UUID=` field; the CLI always assigns a new UUID.
 
 ## pypwsafe (test input only)
 - Repository: https://github.com/ronys/pypwsafe, commit `05ae8a2f7de07e1606d062a0135c43ffc0b0e22c`, GPLv2.
